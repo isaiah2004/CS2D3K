@@ -1,139 +1,33 @@
-// Board lens: kanban columns grouped by phase / status / priority / kind / zone. Drag cards between columns to re-file them.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Plus, MapPin, Trash2, ThumbsUp, ThumbsDown, ArrowRightLeft } from 'lucide-react'
+// Board lens: saved kanban boards over the map's cards.
+//  - groups boards: each group is a column; moving a card moves it into that group on the canvas (applying its fields)
+//  - field boards: one group (or the whole map) split by a field; moving a card sets the field
+// Per-column order is saved on the board. Boards are live: they are derived from the map on every change.
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Plus, MapPin, Trash2, ThumbsUp, ThumbsDown, ArrowRightLeft, MoreHorizontal, Filter, Columns3, KanbanSquare, Pencil, Gauge, Tag, X, Check } from 'lucide-react'
 import type { FormMapCtl, LensProps } from '../context'
 import {
+  cardAccent,
+  cardState,
   cardTitle,
-  EFFORTS,
-  effortPoints,
-  fieldDef,
+  fieldLabel,
   forms,
-  KIND_ORDER,
-  KINDS,
-  optionOf,
-  PHASES,
-  PRIORITIES,
+  groupTitle,
+  optionLabel,
+  optionsFor,
+  type Board,
   type ChecklistItem,
-  type FieldOption,
-  type FormKind,
+  type FormMapMeta,
   type FormNode
 } from '../schema'
-import { mvpStats } from '../analysis'
-import { addCard, deleteNodes, moveToZone, setField, setKind, vote, zoneIndex, zonesInOrder } from './ops'
-import { KindChip, OptionChip, Stars, VoteBadge } from './widgets'
-import { useWorkspace } from '@/store/workspace'
-import { showContextMenu, type MenuItem } from '@/store/ui'
+import { BOARD_FIELD_TYPES, boardColumns, newFieldBoard, newGroupsBoard, type BoardColumn } from '../boards'
+import { addCardToColumn, addField, createBoard, deleteBoard, deleteNodes, groupsInOrder, moveOnBoard, setMeta, setTags, updateBoard, vote } from './ops'
+import { FieldChips, TagChip, tagMenuItems, VoteBadge } from './widgets'
+import { confirmDialog, promptText, showContextMenu, type MenuItem } from '@/store/ui'
 import './lenses.css'
+import './board.css'
 
-type GroupBy = 'phase' | 'status' | 'priority' | 'kind' | 'zone'
-type SortBy = 'map' | 'votes' | 'fun' | 'priority'
-
-interface BoardState {
-  group: GroupBy
-  statusKind: FormKind
-  sort: SortBy
-}
-
-const GROUPS: { id: GroupBy; label: string }[] = [
-  { id: 'phase', label: 'Phase' },
-  { id: 'status', label: 'Status' },
-  { id: 'priority', label: 'Priority' },
-  { id: 'kind', label: 'Kind' },
-  { id: 'zone', label: 'Zone' }
-]
-const SORTS: { id: SortBy; label: string }[] = [
-  { id: 'map', label: 'Map order' },
-  { id: 'votes', label: 'Votes' },
-  { id: 'fun', label: 'Fun' },
-  { id: 'priority', label: 'Priority' }
-]
-const STATUS_KINDS: FormKind[] = ['feature', 'approach', 'question', 'idea']
-const NONE = '__none'
-
-interface Column {
-  key: string
-  label: string
-  emoji?: string
-  color?: string
-  hint?: string
-  /** what a card dropped here gets */
-  drop: { field: string; value: unknown } | { kind: FormKind } | { zone: string | null }
-  /** kind of cards created with quick-add */
-  newKind: FormKind
-  cards: FormNode[]
-}
-
-const byPos = (a: FormNode, b: FormNode): number => a.y - b.y || a.x - b.x
-const prioRank = (f: FormNode): number => {
-  const i = PRIORITIES.findIndex((p) => p.value === f.fields.priority)
-  return i < 0 ? PRIORITIES.length : i
-}
-const SORTERS: Record<SortBy, (a: FormNode, b: FormNode) => number> = {
-  map: byPos,
-  votes: (a, b) => (b.votes ?? 0) - (a.votes ?? 0) || byPos(a, b),
-  fun: (a, b) => (Number(b.fields.fun) || 0) - (Number(a.fields.fun) || 0) || byPos(a, b),
-  priority: (a, b) => prioRank(a) - prioRank(b) || (b.votes ?? 0) - (a.votes ?? 0) || byPos(a, b)
-}
-
-function readState(ctl: FormMapCtl): BoardState {
-  const s = (ctl.tab.state?.board ?? {}) as Partial<BoardState>
-  return {
-    group: GROUPS.some((g) => g.id === s.group) ? s.group! : 'phase',
-    statusKind: s.statusKind && STATUS_KINDS.includes(s.statusKind) ? s.statusKind : 'feature',
-    sort: SORTS.some((x) => x.id === s.sort) ? s.sort! : 'map'
-  }
-}
-
-function buildColumns(ctl: FormMapCtl, st: BoardState): Column[] {
-  const all = forms(ctl.data)
-  const fieldColumns = (kind: FormKind, key: string, options: FieldOption[], noneLabel: string): Column[] => {
-    const cards = all.filter((f) => f.kind === kind)
-    const cols: Column[] = options.map((o) => ({
-      key: o.value,
-      label: o.label,
-      color: o.color,
-      drop: { field: key, value: o.value },
-      newKind: kind,
-      cards: cards.filter((f) => f.fields[key] === o.value)
-    }))
-    const none = cards.filter((f) => !options.some((o) => o.value === f.fields[key]))
-    if (none.length) cols.push({ key: NONE, label: noneLabel, color: 'var(--text-faint)', drop: { field: key, value: undefined }, newKind: kind, cards: none })
-    return cols
-  }
-  switch (st.group) {
-    case 'phase':
-      return fieldColumns('feature', 'phase', PHASES, 'No phase')
-    case 'priority':
-      return fieldColumns('feature', 'priority', PRIORITIES, 'No priority')
-    case 'status':
-      return fieldColumns(st.statusKind, 'status', fieldDef(st.statusKind, 'status')?.options ?? [], 'No status')
-    case 'kind':
-      return KIND_ORDER.map((k) => ({
-        key: k,
-        label: KINDS[k].plural,
-        emoji: KINDS[k].emoji,
-        color: KINDS[k].color,
-        hint: KINDS[k].hint,
-        drop: { kind: k },
-        newKind: k,
-        cards: all.filter((f) => f.kind === k)
-      }))
-    case 'zone': {
-      const idx = zoneIndex(ctl.data)
-      const cols: Column[] = zonesInOrder(ctl.data).map((z) => ({
-        key: z.id,
-        label: z.label || 'Zone',
-        emoji: z.emoji,
-        hint: z.prompt,
-        drop: { zone: z.id },
-        newKind: z.defaultKind ?? 'idea',
-        cards: all.filter((f) => idx.get(f.id) === z.id)
-      }))
-      cols.push({ key: NONE, label: 'Outside zones', emoji: '🌌', hint: 'Cards that float freely on the map.', drop: { zone: null }, newKind: 'idea', cards: all.filter((f) => !idx.get(f.id)) })
-      return cols
-    }
-  }
-}
+/** columns render at most this many cards until "show more" (keeps huge maps fast) */
+const PAGE = 150
 
 interface DragState {
   id: string
@@ -144,48 +38,324 @@ interface DragState {
   offY: number
   width: number
   over: string | null
+  index: number
 }
 
 export default function BoardLens({ ctl }: LensProps) {
-  const [st, setSt] = useState<BoardState>(() => readState(ctl))
-  const update = (patch: Partial<BoardState>): void => {
-    const next = { ...st, ...patch }
-    setSt(next)
-    useWorkspace.getState().updateTabState(ctl.tab.id, { board: next })
+  const meta = ctl.meta
+  const boards = meta.boards ?? []
+  const board = boards.find((b) => b.id === ctl.activeBoard) ?? boards[0] ?? null
+  const [setup, setSetup] = useState<'groups' | 'field' | null>(null)
+  const showSetup = setup !== null || !board
+
+  return (
+    <div className="fm-board">
+      <div className="fm-lens-toolbar fm-board-bar">
+        <div className="fm-board-tabs" role="tablist" aria-label="Boards">
+          {boards.map((b) => (
+            <button
+              key={b.id}
+              role="tab"
+              aria-selected={board?.id === b.id && !setup}
+              className={`fm-board-tab${board?.id === b.id && !setup ? ' is-active' : ''}`}
+              title={`${b.name} — ${b.source.mode === 'groups' ? 'columns are groups' : `by ${fieldLabel(b.source.field, meta.fields?.[b.source.field]).toLowerCase()}`}`}
+              onClick={() => {
+                setSetup(null)
+                ctl.openBoard(b.id)
+              }}
+              onContextMenu={(e) => boardMenu(e, ctl, b)}
+            >
+              {b.source.mode === 'groups' ? <Columns3 size={13} /> : <KanbanSquare size={13} />}
+              <span>{b.name}</span>
+            </button>
+          ))}
+          <button className={`fm-board-tab is-new${setup ? ' is-active' : ''}`} onClick={() => setSetup(setup ? null : 'groups')} title="Create a board">
+            <Plus size={13} />
+            <span>New board</span>
+          </button>
+        </div>
+        <span className="fm-toolbar-spacer" />
+        {board && !showSetup && <BoardTools ctl={ctl} board={board} />}
+      </div>
+      {showSetup ? (
+        <BoardSetup
+          ctl={ctl}
+          mode={setup ?? 'groups'}
+          setMode={setSetup}
+          first={!boards.length}
+          onDone={(id) => {
+            setSetup(null)
+            if (id) ctl.openBoard(id)
+          }}
+        />
+      ) : (
+        <BoardView key={board!.id} ctl={ctl} board={board!} />
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- toolbar
+
+function boardMenu(e: React.MouseEvent, ctl: FormMapCtl, b: Board): void {
+  const meta = ctl.meta
+  const items: MenuItem[] = [
+    {
+      label: 'Rename…',
+      icon: <Pencil />,
+      onClick: () =>
+        void promptText({ title: 'Rename board', initial: b.name, okLabel: 'Rename' }).then((v) => {
+          if (v?.trim()) updateBoard(ctl, b.id, { name: v.trim() })
+        })
+    },
+    { label: 'Show progress in the HUD', icon: <Gauge />, checked: (meta.hudBoard ?? meta.boards?.[0]?.id) === b.id, onClick: () => setMeta(ctl, { hudBoard: b.id }) }
+  ]
+  if (b.source.mode === 'field') {
+    const def = meta.fields?.[b.source.field]
+    if (def?.type === 'select') {
+      const src = b.source
+      const shown = src.values?.length ? src.values : optionsFor(def, b.filter?.tags).map((o) => o.value)
+      items.push({
+        label: 'Columns',
+        icon: <Columns3 />,
+        submenu: (def.options ?? []).map((o) => ({
+          label: optionLabel(o),
+          checked: shown.includes(o.value),
+          onClick: () => {
+            const next = shown.includes(o.value) ? shown.filter((v) => v !== o.value) : (def.options ?? []).map((x) => x.value).filter((v) => v === o.value || shown.includes(v))
+            updateBoard(ctl, b.id, { source: { ...src, values: next } })
+          }
+        }))
+      })
+    }
+  }
+  items.push(
+    { separator: true },
+    {
+      label: 'Delete board',
+      icon: <Trash2 />,
+      danger: true,
+      onClick: () =>
+        void confirmDialog({ title: 'Delete board?', message: `“${b.name}” will be removed. Its cards and groups stay on the map.`, okLabel: 'Delete', danger: true }).then((ok) => {
+          if (ok) deleteBoard(ctl, b.id)
+        })
+    }
+  )
+  showContextMenu(e, items)
+}
+
+/** a board filter without empty parts (undefined when nothing is left) */
+function cleanFilter(f: Board['filter']): Board['filter'] {
+  if (!f) return undefined
+  const next = { ...f }
+  if (!next.tags?.length) delete next.tags
+  if (!next.fields || !Object.keys(next.fields).length) delete next.fields
+  return Object.keys(next).length ? next : undefined
+}
+
+function BoardTools({ ctl, board }: { ctl: FormMapCtl; board: Board }) {
+  const meta = ctl.meta
+  const tags = board.filter?.tags ?? []
+  const fieldFilter = board.filter?.fields ?? {}
+  const allTags = Object.keys(meta.tags ?? {}).sort((a, b) => a.localeCompare(b))
+  const selects = Object.entries(meta.fields ?? {}).filter(([k, f]) => f.type === 'select' && !(board.source.mode === 'field' && board.source.field === k))
+  const setFilter = (patch: Partial<NonNullable<Board['filter']>>): void => updateBoard(ctl, board.id, { filter: cleanFilter({ ...board.filter, ...patch }) })
+  const filterMenu = (e: React.MouseEvent): void => {
+    const toggle = (t: string): void => setFilter({ tags: tags.includes(t) ? tags.filter((x) => x !== t) : [...tags, t] })
+    const setValue = (k: string, v: string): void => {
+      const next = { ...fieldFilter }
+      if (next[k] === v) delete next[k]
+      else next[k] = v
+      setFilter({ fields: next })
+    }
+    const active = tags.length > 0 || Object.keys(fieldFilter).length > 0
+    showContextMenu(e, [
+      ...allTags.map((t) => ({ label: `#${t}`, checked: tags.includes(t), onClick: () => toggle(t) })),
+      ...(!allTags.length ? [{ label: 'No tags on this map yet', disabled: true }] : []),
+      ...(selects.length ? [{ separator: true } as MenuItem] : []),
+      ...selects.map(([k, f]) => ({
+        label: fieldLabel(k, f),
+        checked: k in fieldFilter,
+        submenu: (f.options ?? []).map((o) => ({ label: optionLabel(o), checked: fieldFilter[k] === o.value, onClick: () => setValue(k, o.value) }))
+      })),
+      ...(active ? [{ separator: true }, { label: 'Clear filter', icon: <X />, onClick: () => updateBoard(ctl, board.id, { filter: undefined }) }] : [])
+    ])
+  }
+  const reg = meta.fields ?? {}
+  return (
+    <>
+      {tags.map((t) => (
+        <TagChip key={t} tag={t} meta={meta} compact onRemove={() => setFilter({ tags: tags.filter((x) => x !== t) })} />
+      ))}
+      {Object.entries(fieldFilter).map(([k, v]) => (
+        <span key={k} className="fm-board-ffilter" title="Field filter">
+          {fieldLabel(k, reg[k])}: {optionLabel(reg[k]?.options?.find((o) => o.value === v) ?? { value: String(v) })}
+          <button
+            className="fm-tag-x"
+            aria-label={`Remove the ${k} filter`}
+            onClick={() => {
+              const { [k]: _drop, ...rest } = fieldFilter
+              setFilter({ fields: rest })
+            }}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <button className={`btn fm-board-filter${tags.length || Object.keys(fieldFilter).length ? ' is-active' : ''}`} onClick={filterMenu} title="Only show cards with these tags / field values">
+        <Filter size={13} /> Filter
+      </button>
+      <button className="clickable-icon small" title="Board menu" aria-label="Board menu" onClick={(e) => boardMenu(e, ctl, board)}>
+        <MoreHorizontal />
+      </button>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- setup
+
+function BoardSetup({ ctl, mode, setMode, first, onDone }: { ctl: FormMapCtl; mode: 'groups' | 'field'; setMode: (m: 'groups' | 'field') => void; first: boolean; onDone: (id: string | null) => void }) {
+  const gs = useMemo(() => groupsInOrder(ctl.data), [ctl.data])
+  const fields = Object.entries(ctl.meta.fields ?? {}).filter(([, f]) => BOARD_FIELD_TYPES.includes(f.type))
+  const [picked, setPicked] = useState<string[]>([])
+  const [field, setField] = useState<string>(fields.find(([, f]) => f.type === 'select')?.[0] ?? fields[0]?.[0] ?? '')
+  const [scope, setScope] = useState<string>('')
+  const [name, setName] = useState('')
+  const counts = useMemo(() => {
+    const m = new Map<string, number>()
+    const all = forms(ctl.data)
+    for (const g of gs) m.set(g.id, all.filter((c) => c.x + c.width / 2 >= g.x && c.x + c.width / 2 <= g.x + g.width && c.y + c.height / 2 >= g.y && c.y + c.height / 2 <= g.y + g.height).length)
+    return m
+  }, [ctl.data, gs])
+
+  const create = (): void => {
+    if (mode === 'groups') {
+      if (!picked.length) return
+      const b = newGroupsBoard(ctl.data, picked, name.trim() || undefined)
+      onDone(createBoard(ctl, b))
+    } else {
+      if (!field) return
+      const b = newFieldBoard(ctl.data, field, scope || undefined, name.trim() || undefined)
+      onDone(createBoard(ctl, b))
+    }
+  }
+  const addStatus = (): void => {
+    const key = ctl.meta.fields?.Status ? `Status ${Object.keys(ctl.meta.fields).length}` : 'Status'
+    addField(ctl, key, { type: 'select', options: [{ value: 'To do', color: 'gray' }, { value: 'Doing', color: 'blue' }, { value: 'Done', color: 'green' }] })
+    setField(key)
   }
 
-  const columns = useMemo(() => {
-    const cols = buildColumns(ctl, st)
-    for (const c of cols) c.cards.sort(SORTERS[st.sort])
-    return cols
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctl.data, st])
+  return (
+    <div className="fm-board-setup">
+      <div className="fm-board-setup-card">
+        <div className="fm-board-setup-title">{first ? '📋 Make a board from this map' : '📋 New board'}</div>
+        <div className="fm-board-setup-sub">Boards are live views of the canvas: move a card here and it moves there too.</div>
+        <div className="fm-seg fm-board-setup-modes" role="tablist">
+          <button role="tab" aria-selected={mode === 'groups'} className={mode === 'groups' ? 'is-active' : ''} onClick={() => setMode('groups')}>
+            <Columns3 size={13} /> Groups as columns
+          </button>
+          <button role="tab" aria-selected={mode === 'field'} className={mode === 'field' ? 'is-active' : ''} onClick={() => setMode('field')}>
+            <KanbanSquare size={13} /> Split by a field
+          </button>
+        </div>
+        {mode === 'groups' ? (
+          gs.length ? (
+            <>
+              <div className="fm-board-setup-hint">Pick the groups that become columns (left to right as on the canvas). Moving a card between columns moves it between the groups.</div>
+              <div className="fm-board-setup-groups">
+                {gs.map((g) => (
+                  <label key={g.id} className={`fm-board-setup-group${picked.includes(g.id) ? ' is-on' : ''}`}>
+                    <input type="checkbox" checked={picked.includes(g.id)} onChange={() => setPicked(picked.includes(g.id) ? picked.filter((x) => x !== g.id) : [...picked, g.id])} />
+                    <span className="fm-board-setup-emoji">{g.emoji ?? '▢'}</span>
+                    <span className="fm-board-setup-label">{groupTitle(g)}</span>
+                    <span className="fm-board-setup-count">{counts.get(g.id) ?? 0}</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="fm-board-setup-empty">This map has no groups yet. Add groups on the canvas (or select them and right-click → “Create board from groups”).</div>
+          )
+        ) : fields.length ? (
+          <>
+            <div className="fm-board-setup-hint">Columns are the field’s values; moving a card sets the field.</div>
+            <div className="fm-board-setup-row">
+              <span>Field</span>
+              <select className="dropdown" value={field} onChange={(e) => setField(e.target.value)} aria-label="Field">
+                {fields.map(([k, f]) => (
+                  <option key={k} value={k}>
+                    {fieldLabel(k, f)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="fm-board-setup-row">
+              <span>Cards</span>
+              <select className="dropdown" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Scope">
+                <option value="">The whole map</option>
+                {gs.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    In “{groupTitle(g)}”
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        ) : (
+          <div className="fm-board-setup-empty">
+            No fields a board can split by yet.
+            <button className="btn" onClick={addStatus}>
+              Add a Status field (To do / Doing / Done)
+            </button>
+          </div>
+        )}
+        <div className="fm-board-setup-row">
+          <span>Name</span>
+          <input className="input" value={name} placeholder="Optional" onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && create()} aria-label="Board name" />
+        </div>
+        <div className="fm-board-setup-actions">
+          {!first && (
+            <button className="btn" onClick={() => onDone(null)}>
+              Cancel
+            </button>
+          )}
+          <button className="btn mod-cta" disabled={mode === 'groups' ? !picked.length : !field} onClick={create}>
+            Create board
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- the board
+
+function BoardView({ ctl, board }: { ctl: FormMapCtl; board: Board }) {
+  const meta = ctl.meta
+  const columns = useMemo(() => boardColumns(ctl.data, board), [ctl.data, board])
   const total = columns.reduce((s, c) => s + c.cards.length, 0)
-  const mvp = useMemo(() => mvpStats(ctl.data), [ctl.data])
+  const skip = board.source.mode === 'field' ? board.source.field : undefined
+  const [limit, setLimit] = useState<Record<string, number>>({})
 
   const selected = useMemo(() => new Set(ctl.selection), [ctl.selection])
   const dimmed = useMemo(() => {
     const f = ctl.focusFilter
-    if (!ctl.highlight && !f) return null
+    if (!ctl.highlight && !f?.tags?.length) return null
     const hl = ctl.highlight ? new Set(ctl.highlight) : null
-    return (c: FormNode): boolean =>
-      (!!hl && !hl.has(c.id)) || (!!f?.kinds?.length && !f.kinds.includes(c.kind)) || (!!f?.phase && c.fields.phase !== f.phase)
+    return (c: FormNode): boolean => (!!hl && !hl.has(c.id)) || (!!f?.tags?.length && !f.tags.some((t) => c.tags?.includes(t)))
   }, [ctl.highlight, ctl.focusFilter])
 
-  // ------------------------------------------------ drop
+  // ------------------------------------------------ moves
   const ctlRef = useRef(ctl)
   ctlRef.current = ctl
   const [dropped, setDropped] = useState<string | null>(null)
   const [adding, setAdding] = useState<string | null>(null)
-  const applyDrop = useCallback((id: string, col: Column, at?: { clientX: number; clientY: number }) => {
-    const c = ctlRef.current
-    const d = col.drop
-    if ('field' in d) setField(c, id, d.field, d.value, at)
-    else if ('kind' in d) setKind(c, id, d.kind)
-    else moveToZone(c, id, d.zone)
+  const move = (id: string, col: BoardColumn, index: number, at?: { clientX: number; clientY: number }): void => {
+    if (col.locked) return
+    moveOnBoard(ctlRef.current, board.id, id, col.key, index, at)
     setDropped(id)
     setTimeout(() => setDropped((x) => (x === id ? null : x)), 450)
-  }, [])
+  }
 
   // ------------------------------------------------ pointer drag
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -206,14 +376,24 @@ export default function BoardLens({ ctl }: LensProps) {
     const sx = e.clientX
     const sy = e.clientY
     let started = false
-    const move = (ev: PointerEvent): void => {
+    const at = (ev: PointerEvent): { over: string | null; index: number } => {
+      const colEl = (document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest<HTMLElement>('[data-col]')
+      if (!colEl) return { over: null, index: 0 }
+      const cards = [...colEl.querySelectorAll<HTMLElement>('[data-card]')].filter((x) => x.dataset.card !== card.id)
+      let index = cards.findIndex((x) => {
+        const r = x.getBoundingClientRect()
+        return ev.clientY < r.top + r.height / 2
+      })
+      if (index < 0) index = cards.length
+      return { over: colEl.dataset.col ?? null, index }
+    }
+    const moveFn = (ev: PointerEvent): void => {
       if (!started) {
         if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return
         started = true
         document.body.classList.add('fm-board-dragging')
       }
-      const over = (document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest<HTMLElement>('[data-col]')?.dataset.col ?? null
-      const next: DragState = { id: card.id, from: colKey, x: ev.clientX, y: ev.clientY, offX: sx - rect.left, offY: sy - rect.top, width: rect.width, over }
+      const next: DragState = { id: card.id, from: colKey, x: ev.clientX, y: ev.clientY, offX: sx - rect.left, offY: sy - rect.top, width: rect.width, ...at(ev) }
       dragRef.current = next
       setDrag(next)
       // auto-scroll the board near its left/right edges
@@ -224,31 +404,27 @@ export default function BoardLens({ ctl }: LensProps) {
         else if (ev.clientX > r.right - 60) sc.scrollLeft += 14
       }
     }
-    const up = (ev: PointerEvent): void => {
-      window.removeEventListener('pointermove', move)
+    const end = (ev: PointerEvent | null): void => {
+      window.removeEventListener('pointermove', moveFn)
       window.removeEventListener('pointerup', up)
       window.removeEventListener('keydown', esc, true)
       document.body.classList.remove('fm-board-dragging')
       const d = dragRef.current
       dragRef.current = null
       setDrag(null)
-      if (!started || !d) return
+      if (!ev || !started || !d) return
       suppressClick.current = true
       setTimeout(() => (suppressClick.current = false), 0)
-      if (d.over && d.over !== d.from) {
-        const col = colsRef.current.find((c) => c.key === d.over)
-        if (col) applyDrop(d.id, col, { clientX: ev.clientX, clientY: ev.clientY })
-      }
+      const col = d.over ? colsRef.current.find((c) => c.key === d.over) : undefined
+      if (col) move(d.id, col, d.index, { clientX: ev.clientX, clientY: ev.clientY })
     }
+    const up = (ev: PointerEvent): void => end(ev)
     const esc = (ev: KeyboardEvent): void => {
       if (ev.key !== 'Escape') return
       ev.stopPropagation()
-      dragRef.current = null
-      setDrag(null)
-      started = false
-      document.body.classList.remove('fm-board-dragging')
+      end(null)
     }
-    window.addEventListener('pointermove', move)
+    window.addEventListener('pointermove', moveFn)
     window.addEventListener('pointerup', up)
     window.addEventListener('keydown', esc, true)
   }
@@ -272,6 +448,10 @@ export default function BoardLens({ ctl }: LensProps) {
         focusCard(target.id)
       }
     }
+    const rect = (): { clientX: number; clientY: number } => {
+      const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      return { clientX: r.left + r.width / 2, clientY: r.top + 20 }
+    }
     if (e.key === 'Escape') {
       e.preventDefault()
       if (ctl.highlight) ctl.setHighlight(null)
@@ -279,6 +459,10 @@ export default function BoardLens({ ctl }: LensProps) {
     } else if (e.key === 'Enter') {
       e.preventDefault()
       ctl.reveal([card.id], { select: true })
+    } else if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault()
+      move(card.id, col, Math.max(0, ri + (e.key === 'ArrowUp' ? -1 : 1)))
+      focusCard(card.id)
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
       nav(ci, ri + 1)
@@ -291,9 +475,8 @@ export default function BoardLens({ ctl }: LensProps) {
       if (e.altKey || e.shiftKey) {
         // move the card to the next column
         const target = columns[ci + dir]
-        if (target && target.key !== col.key) {
-          const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-          applyDrop(card.id, target, { clientX: r.left + r.width / 2, clientY: r.top + 20 })
+        if (target && target.key !== col.key && !target.locked) {
+          move(card.id, target, target.cards.length, rect())
           focusCard(card.id)
         }
       } else {
@@ -310,15 +493,16 @@ export default function BoardLens({ ctl }: LensProps) {
     else if (e.key === '-') vote(ctl, card.id, -1)
   }
 
-  const cardMenu = (e: React.MouseEvent, card: FormNode, col: Column): void => {
+  const cardMenu = (e: React.MouseEvent, card: FormNode, col: BoardColumn): void => {
     if (!selected.has(card.id)) ctl.setSelection([card.id])
     const items: MenuItem[] = [
       { label: 'Reveal in map', icon: <MapPin size={14} />, onClick: () => ctl.reveal([card.id], { select: true }) },
       {
         label: 'Move to',
         icon: <ArrowRightLeft size={14} />,
-        submenu: columns.filter((c) => c.key !== col.key && !(c.key === NONE && 'field' in c.drop)).map((c) => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, onClick: () => applyDrop(card.id, c, e) }))
+        submenu: columns.filter((c) => c.key !== col.key && !c.locked).map((c) => ({ label: `${c.emoji ? c.emoji + ' ' : ''}${c.label}`, onClick: () => move(card.id, c, c.cards.length, e) }))
       },
+      { label: 'Tags', icon: <Tag size={14} />, submenu: tagMenuItems(meta, card.tags ?? [], (t) => setTags(ctl, card.id, card.tags?.includes(t) ? { remove: [t] } : { add: [t] })) },
       { separator: true },
       { label: 'Vote', icon: <ThumbsUp size={14} />, onClick: () => vote(ctl, card.id, 1) },
       { label: 'Remove vote', icon: <ThumbsDown size={14} />, disabled: !card.votes, onClick: () => vote(ctl, card.id, -1) },
@@ -328,99 +512,139 @@ export default function BoardLens({ ctl }: LensProps) {
     showContextMenu(e, items)
   }
 
+  const colMenu = (e: React.MouseEvent, col: BoardColumn): void => {
+    const items: MenuItem[] = [
+      { label: 'Add card', icon: <Plus size={14} />, disabled: !!col.locked, onClick: () => setAdding(col.key) },
+      {
+        label: col.wip ? `WIP limit: ${col.wip}…` : 'Set WIP limit…',
+        icon: <Gauge size={14} />,
+        onClick: () =>
+          void promptText({ title: `WIP limit for “${col.label}”`, message: 'Most cards this column should hold (empty = no limit).', initial: col.wip ? String(col.wip) : '', okLabel: 'Set', validate: (v) => (!v.trim() || /^\d+$/.test(v.trim()) ? null : 'A whole number') }).then((v) => {
+            if (v === null) return
+            const wip = { ...(board.wip ?? {}) }
+            if (v.trim() && Number(v) > 0) wip[col.key] = Number(v)
+            else delete wip[col.key]
+            updateBoard(ctl, board.id, { wip: Object.keys(wip).length ? wip : undefined })
+          })
+      }
+    ]
+    if (board.source.mode === 'groups' && col.groupId) {
+      const src = board.source
+      items.push(
+        { label: 'Reveal group', icon: <MapPin size={14} />, onClick: () => ctl.reveal([col.groupId!]) },
+        { label: 'Remove column from board', icon: <X size={14} />, disabled: src.groupIds.length < 2, onClick: () => updateBoard(ctl, board.id, { source: { ...src, groupIds: src.groupIds.filter((g) => g !== col.groupId) } }) }
+      )
+    }
+    showContextMenu(e, items)
+  }
+
+  const addColumnMenu = (e: React.MouseEvent): void => {
+    if (board.source.mode !== 'groups') return
+    const src = board.source
+    const rest = groupsInOrder(ctl.data).filter((g) => !src.groupIds.includes(g.id))
+    showContextMenu(e, rest.length ? rest.map((g) => ({ label: `${g.emoji ?? '▢'}  ${groupTitle(g)}`, onClick: () => updateBoard(ctl, board.id, { source: { ...src, groupIds: [...src.groupIds, g.id] } }) })) : [{ label: 'Every group is already a column', disabled: true }])
+  }
+
   const dragCard = drag ? forms(ctl.data).find((f) => f.id === drag.id) : null
-  const groupKey = st.group === 'kind' || st.group === 'zone' ? null : st.group === 'status' ? 'status' : st.group
+  const reg = meta.fields ?? {}
+
+  if (!columns.length)
+    return (
+      <div className="fm-board-setup">
+        <div className="fm-board-setup-card">
+          <div className="fm-board-setup-title">🫙 This board has no columns</div>
+          <div className="fm-board-setup-sub">{board.source.mode === 'groups' ? 'Its groups were removed from the map.' : `The field “${board.source.field}” has no values yet.`}</div>
+        </div>
+      </div>
+    )
 
   return (
-    <div className={`fm-board${drag ? ' is-dragging' : ''}`} ref={rootRef}>
-      <div className="fm-lens-toolbar">
-        <span className="fm-toolbar-label">Group</span>
-        <div className="fm-seg" role="tablist" aria-label="Group by">
-          {GROUPS.map((g) => (
-            <button key={g.id} role="tab" aria-selected={st.group === g.id} className={st.group === g.id ? 'is-active' : ''} onClick={() => update({ group: g.id })}>
-              {g.label}
-            </button>
-          ))}
-        </div>
-        {st.group === 'status' && (
-          <div className="fm-seg" aria-label="Kind">
-            {STATUS_KINDS.map((k) => (
-              <button key={k} className={st.statusKind === k ? 'is-active' : ''} onClick={() => update({ statusKind: k })} title={KINDS[k].plural}>
-                {KINDS[k].emoji} {KINDS[k].plural}
-              </button>
-            ))}
-          </div>
-        )}
-        <span className="fm-toolbar-spacer" />
-        <span className="fm-toolbar-label">Sort</span>
-        <div className="fm-seg" aria-label="Sort by">
-          {SORTS.map((s) => (
-            <button key={s.id} className={st.sort === s.id ? 'is-active' : ''} onClick={() => update({ sort: s.id })}>
-              {s.label}
-            </button>
-          ))}
-        </div>
-        <span className="fm-toolbar-count">{total} cards</span>
-      </div>
+    <div className={`fm-board-body${drag ? ' is-dragging' : ''}`} ref={rootRef}>
       <div className="fm-board-scroll" ref={scrollRef}>
         {columns.map((col, ci) => {
-          const pts = col.cards.some((c) => c.kind === 'feature') ? col.cards.reduce((s, c) => s + (c.fields.status === 'cut' ? 0 : effortPoints(c.fields.effort)), 0) : 0
-          const isMvp = st.group === 'phase' && col.key === 'mvp'
-          const over = drag && drag.over === col.key && drag.from !== col.key
+          const over = !!drag && drag.over === col.key && !col.locked
+          const shown = col.cards.slice(0, limit[col.key] ?? PAGE)
+          const placeholderAt = over ? Math.min(drag!.index, shown.filter((c) => c.id !== drag!.id).length) : -1
+          let r = -1
           return (
-            <section key={col.key} className={`fm-col${over ? ' is-drop-target' : ''}`} data-col={col.key} style={{ '--fm-col-color': col.color ?? 'var(--background-modifier-border-focus)' } as React.CSSProperties}>
-              <header className="fm-col-head">
+            <section key={col.key} className={`fm-col${over ? ' is-drop-target' : ''}${col.locked ? ' is-locked' : ''}`} data-col={col.key} style={{ '--fm-col-color': col.color ?? 'var(--background-modifier-border-focus)' } as React.CSSProperties}>
+              <header className="fm-col-head" onContextMenu={(e) => colMenu(e, col)}>
                 {col.emoji ? <span className="fm-col-emoji">{col.emoji}</span> : <span className="fm-col-dot" />}
-                <span className="fm-col-label">{col.label}</span>
-                <span className="fm-col-count">{col.cards.length}</span>
-                {pts > 0 && (
-                  <span className={`fm-col-pts${isMvp && mvp.budget !== null && mvp.points > mvp.budget ? ' is-over' : ''}`} title="Effort points">
-                    {isMvp && mvp.budget !== null ? `${pts}/${mvp.budget}` : pts} pts
-                  </span>
+                <span className="fm-col-label" title={col.hint ?? col.label}>
+                  {col.label}
+                </span>
+                <span className={`fm-col-count${col.wip && col.cards.length > col.wip ? ' is-over' : ''}`} title={col.wip ? `WIP limit ${col.wip}` : `${col.cards.length} cards`}>
+                  {col.cards.length}
+                  {col.wip ? `/${col.wip}` : ''}
+                </span>
+                <span className="fm-toolbar-spacer" />
+                {!col.locked && (
+                  <button className="clickable-icon small fm-col-add" title={`Add a card to “${col.label}”`} onClick={() => setAdding(col.key)}>
+                    <Plus />
+                  </button>
                 )}
-                <button className="clickable-icon small fm-col-add" title={`Add ${KINDS[col.newKind].label.toLowerCase()} to “${col.label}”`} onClick={() => setAdding(col.key)}>
-                  <Plus />
+                <button className="clickable-icon small fm-col-menu" title="Column menu" onClick={(e) => colMenu(e, col)}>
+                  <MoreHorizontal />
                 </button>
               </header>
               <div className="fm-col-body">
-                {col.cards.map((card, ri) => (
-                  <BoardCard
-                    key={card.id}
-                    card={card}
-                    groupKey={groupKey}
-                    showKind={st.group === 'kind' ? false : true}
-                    selected={selected.has(card.id)}
-                    dim={!selected.has(card.id) && (dimmed?.(card) ?? false)}
-                    dragging={drag?.id === card.id}
-                    dropped={dropped === card.id}
-                    onPointerDown={(e) => onCardPointerDown(e, card, col.key)}
-                    onClick={(e) => select(e, card.id)}
-                    onDoubleClick={() => ctl.reveal([card.id], { select: true })}
-                    onKeyDown={(e) => onCardKey(e, card, ci, ri)}
-                    onFocus={() => {
-                      if (!pointerFocus.current && !selected.has(card.id)) ctl.setSelection([card.id])
-                    }}
-                    onContextMenu={(e) => cardMenu(e, card, col)}
-                    onField={(k, v, e) => setField(ctl, card.id, k, v, e)}
-                  />
-                ))}
-                {over && <div className="fm-col-placeholder">Drop to move here</div>}
+                {shown.map((card) => {
+                  if (card.id !== drag?.id) r++
+                  const ri = r
+                  return (
+                    <div key={card.id} className="fm-col-slot">
+                      {placeholderAt === ri && card.id !== drag?.id && <div className="fm-col-placeholder" />}
+                      <BoardCard
+                        card={card}
+                        meta={meta}
+                        skip={skip}
+                        selected={selected.has(card.id)}
+                        dim={!selected.has(card.id) && (dimmed?.(card) ?? false)}
+                        dragging={drag?.id === card.id}
+                        dropped={dropped === card.id}
+                        onPointerDown={(e) => onCardPointerDown(e, card, col.key)}
+                        onClick={(e) => select(e, card.id)}
+                        onDoubleClick={() => ctl.reveal([card.id], { select: true })}
+                        onKeyDown={(e) => onCardKey(e, card, ci, col.cards.indexOf(card))}
+                        onFocus={() => {
+                          if (!pointerFocus.current && !selected.has(card.id)) ctl.setSelection([card.id])
+                        }}
+                        onContextMenu={(e) => cardMenu(e, card, col)}
+                      />
+                    </div>
+                  )
+                })}
+                {over && placeholderAt >= shown.filter((c) => c.id !== drag!.id).length && <div className="fm-col-placeholder" />}
+                {col.cards.length > shown.length && (
+                  <button className="fm-col-addrow" onClick={() => setLimit({ ...limit, [col.key]: shown.length + PAGE })}>
+                    Show {Math.min(PAGE, col.cards.length - shown.length)} more of {col.cards.length - shown.length}
+                  </button>
+                )}
                 {!col.cards.length && !over && (
                   <div className="fm-col-empty">
                     <div className="fm-col-empty-emoji">{col.emoji ?? '🫙'}</div>
                     <div>{col.hint ?? 'Nothing here yet.'}</div>
-                    <div className="fm-col-empty-sub">Drag a card here or add one.</div>
+                    {!col.locked && <div className="fm-col-empty-sub">Drag a card here or add one.</div>}
                   </div>
                 )}
-                <QuickAdd ctl={ctl} col={col} open={adding === col.key} setOpen={(o) => setAdding(o ? col.key : null)} />
+                {!col.locked && <QuickAdd ctl={ctl} board={board} col={col} open={adding === col.key} setOpen={(o) => setAdding(o ? col.key : null)} />}
               </div>
             </section>
           )
         })}
+        {board.source.mode === 'groups' && (
+          <button className="fm-col-new" onClick={addColumnMenu} title="Add a group as a column">
+            <Plus size={14} /> Column
+          </button>
+        )}
+      </div>
+      <div className="fm-board-foot">
+        {total} card{total === 1 ? '' : 's'}
+        {board.source.mode === 'groups' ? ' · columns are groups on the canvas' : ` · by ${fieldLabel(board.source.field, reg[board.source.field]).toLowerCase()}`}
       </div>
       {drag && dragCard && (
         <div className="fm-board-ghost" style={{ left: drag.x - drag.offX, top: drag.y - drag.offY, width: drag.width }}>
-          <BoardCardBody card={dragCard} groupKey={groupKey} showKind />
+          <BoardCardBody card={dragCard} meta={meta} skip={skip} />
         </div>
       )}
     </div>
@@ -431,8 +655,8 @@ export default function BoardLens({ ctl }: LensProps) {
 
 interface BoardCardProps {
   card: FormNode
-  groupKey: string | null
-  showKind: boolean
+  meta: FormMapMeta
+  skip?: string
   selected: boolean
   dim: boolean
   dragging: boolean
@@ -443,13 +667,12 @@ interface BoardCardProps {
   onKeyDown: (e: React.KeyboardEvent) => void
   onFocus: () => void
   onContextMenu: (e: React.MouseEvent) => void
-  onField: (key: string, v: unknown, e: React.MouseEvent) => void
 }
 
 function BoardCard(p: BoardCardProps) {
-  const cls = ['fm-bcard', p.selected && 'is-selected', p.dim && 'is-dim', p.dragging && 'is-dragging', p.dropped && 'is-dropped', isDone(p.card) && 'is-done']
-    .filter(Boolean)
-    .join(' ')
+  const state = cardState(p.card, p.meta.fields ?? {})
+  const cls = ['fm-bcard', p.selected && 'is-selected', p.dim && 'is-dim', p.dragging && 'is-dragging', p.dropped && 'is-dropped', state === 'win' && 'is-done', state === 'muted' && 'is-muted'].filter(Boolean).join(' ')
+  const accent = cardAccent(p.card, p.meta)
   return (
     <div
       className={cls}
@@ -458,7 +681,7 @@ function BoardCard(p: BoardCardProps) {
       role="button"
       aria-label={cardTitle(p.card)}
       aria-pressed={p.selected}
-      style={{ '--fm-card-color': KINDS[p.card.kind].color } as React.CSSProperties}
+      style={accent ? ({ '--fm-card-color': accent } as React.CSSProperties) : undefined}
       onPointerDown={p.onPointerDown}
       onClick={p.onClick}
       onDoubleClick={p.onDoubleClick}
@@ -466,56 +689,39 @@ function BoardCard(p: BoardCardProps) {
       onFocus={p.onFocus}
       onContextMenu={p.onContextMenu}
     >
-      <BoardCardBody card={p.card} groupKey={p.groupKey} showKind={p.showKind} onField={p.onField} />
+      <BoardCardBody card={p.card} meta={p.meta} skip={p.skip} />
     </div>
   )
 }
 
-const isDone = (c: FormNode): boolean =>
-  (c.kind === 'feature' && c.fields.status === 'done') || (c.kind === 'question' && c.fields.status === 'decided') || (c.kind === 'approach' && c.fields.status === 'accepted')
-
-function BoardCardBody({ card, groupKey, showKind, onField }: { card: FormNode; groupKey: string | null; showKind: boolean; onField?: (key: string, v: unknown, e: React.MouseEvent) => void }) {
-  const def = KINDS[card.kind]
-  const chips = def.fields.filter((f) => f.type === 'select' && f.onCard && f.key !== groupKey && card.fields[f.key] !== undefined)
-  const fun = def.fields.find((f) => f.type === 'rating' && f.onCard)
-  const ac = Array.isArray(card.fields.acceptance) ? (card.fields.acceptance as ChecklistItem[]) : null
+function BoardCardBody({ card, meta, skip }: { card: FormNode; meta: FormMapMeta; skip?: string }) {
+  const reg = meta.fields ?? {}
   const excerpt = (card.text ?? '').replace(/[#*_`>[\]]/g, '').trim()
   const showExcerpt = excerpt && excerpt !== card.title?.trim()
+  const checklist = Object.entries(card.fields).find(([k, v]) => reg[k]?.type === 'checklist' && Array.isArray(v) && v.length)?.[1] as ChecklistItem[] | undefined
+  const tags = card.tags ?? []
   return (
     <>
       <div className="fm-bcard-top">
-        {showKind && <KindChip kind={card.kind} label={false} />}
         <div className="fm-bcard-title">{cardTitle(card)}</div>
+        {cardState(card, reg) === 'win' && <Check className="fm-bcard-check" size={14} strokeWidth={3} />}
         <VoteBadge votes={card.votes} />
       </div>
       {showExcerpt && <div className="fm-bcard-text">{excerpt}</div>}
-      {(chips.length > 0 || (fun && Number(card.fields[fun.key])) || (ac && ac.length > 0)) && (
-        <div className="fm-bcard-chips">
-          {chips.map((f) => {
-            const o = optionOf(f, card.fields[f.key])
-            if (!o) return null
-            const isEffort = f.key === 'effort'
-            return <OptionChip key={f.key} option={isEffort ? { ...o, label: `${o.label} · ${EFFORTS.find((x) => x.value === o.value)?.points}pt` } : o} compact title={f.label} />
-          })}
-          {ac && ac.length > 0 && (
-            <span className="fm-bcard-ac" title="Acceptance criteria">
-              ✓ {ac.filter((i) => i.done).length}/{ac.length}
-            </span>
-          )}
-          {fun && Number(card.fields[fun.key]) > 0 && (
-            <span className="fm-bcard-fun" title={fun.label}>
-              <Stars value={Number(card.fields[fun.key])} max={fun.max ?? 5} size={11} onChange={onField ? (v, e) => onField(fun.key, v || undefined, e) : undefined} />
-            </span>
-          )}
-        </div>
-      )}
+      <div className="fm-bcard-chips">
+        {tags.map((t) => (
+          <TagChip key={t} tag={t} meta={meta} compact />
+        ))}
+        <FieldChips fields={card.fields} reg={reg} skip={skip} max={4} />
+        {checklist && <span className="fm-bcard-ac">☑ {checklist.filter((i) => i?.done).length}/{checklist.length}</span>}
+      </div>
     </>
   )
 }
 
 // ---------------------------------------------------------------- quick add
 
-function QuickAdd({ ctl, col, open, setOpen }: { ctl: FormMapCtl; col: Column; open: boolean; setOpen: (open: boolean) => void }) {
+function QuickAdd({ ctl, board, col, open, setOpen }: { ctl: FormMapCtl; board: Board; col: BoardColumn; open: boolean; setOpen: (open: boolean) => void }) {
   const [text, setText] = useState('')
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
@@ -529,9 +735,7 @@ function QuickAdd({ ctl, col, open, setOpen }: { ctl: FormMapCtl; col: Column; o
   const create = (): void => {
     const title = text.trim()
     if (!title) return close()
-    const d = col.drop
-    const opts = 'field' in d ? (d.value === undefined ? { avoidKey: d.field } : { fields: { [d.field]: d.value } }) : 'zone' in d ? { zoneId: d.zone } : {}
-    const id = addCard(ctl, col.newKind, { title, ...opts })
+    const id = addCardToColumn(ctl, board, col, title)
     ctl.setSelection([id])
     // keep the input open for rapid capture
     setText('')
@@ -540,7 +744,7 @@ function QuickAdd({ ctl, col, open, setOpen }: { ctl: FormMapCtl; col: Column; o
   if (!open)
     return (
       <button className="fm-col-addrow" onClick={() => setOpen(true)}>
-        <Plus size={13} /> Add {KINDS[col.newKind].label.toLowerCase()}
+        <Plus size={13} /> Add card
       </button>
     )
   return (
@@ -550,7 +754,7 @@ function QuickAdd({ ctl, col, open, setOpen }: { ctl: FormMapCtl; col: Column; o
         className="fm-quickadd-input"
         rows={2}
         value={text}
-        placeholder={`${KINDS[col.newKind].emoji} Title… (Enter to add, Esc to close)`}
+        placeholder="Title… (Enter to add, Esc to close)"
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {

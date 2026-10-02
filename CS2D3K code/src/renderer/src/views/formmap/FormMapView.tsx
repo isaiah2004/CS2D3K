@@ -5,7 +5,7 @@ import type { ViewProps } from '../types'
 import { useCanvasDoc } from '../canvas/useCanvasDoc'
 import { ViewHeaderActions } from '@/components/Slots'
 import { FormMapContext, type FocusFilter, type FormMapCtl, type LensId, type MapApi } from './context'
-import { normalizeFormMap, type FormMapData, type FormNode } from './schema'
+import { metaOf, normalizeFormMap, type FormMapData, type FormNode } from './schema'
 import { TEMPLATES } from './templates'
 import { useWorkspace } from '@/store/workspace'
 import './formmap.css'
@@ -29,12 +29,15 @@ export default function FormMapView({ tab, visible, focused }: ViewProps) {
   const path = tab.path ?? ''
   const doc = useCanvasDoc(path, normalizeFormMap)
   const data = doc.data as FormMapData
+  // the registries keep their identity while only nodes change (cards don't re-render on every move)
+  const meta = useMemo(() => metaOf(data), [data.formmap])
 
   const [lens, setLensState] = useState<LensId>(isLens(tab.state?.lens) ? tab.state.lens : 'map')
   const [selection, setSelection] = useState<string[]>([])
   const [highlight, setHighlight] = useState<string[] | null>(null)
   const [focusFilter, setFocusFilter] = useState<FocusFilter | null>(null)
   const [inspectorOpen, setInspectorOpenState] = useState<boolean>(tab.state?.inspector !== false)
+  const [activeBoard, setActiveBoard] = useState<string | null>(typeof tab.state?.boardId === 'string' ? tab.state.boardId : null)
   const mapApi = useRef<MapApi | null>(null)
   const pending = useRef<((api: MapApi) => void) | null>(null)
 
@@ -68,16 +71,28 @@ export default function FormMapView({ tab, visible, focused }: ViewProps) {
   const docRef = useRef(doc)
   docRef.current = doc
 
+  const openBoard = useCallback(
+    (id: string) => {
+      setActiveBoard(id)
+      useWorkspace.getState().updateTabState(tab.id, { boardId: id })
+      setLens('board')
+    },
+    [tab.id, setLens]
+  )
+
   const ctl: FormMapCtl = useMemo(
     () => ({
       doc,
       data,
+      meta,
       path,
       tab,
       visible,
       focused,
       lens,
       setLens,
+      activeBoard,
+      openBoard,
       selection,
       setSelection,
       highlight,
@@ -108,7 +123,7 @@ export default function FormMapView({ tab, visible, focused }: ViewProps) {
           opts
         )
     }),
-    [doc, data, path, tab, visible, focused, lens, setLens, selection, highlight, focusFilter, inspectorOpen, setInspectorOpen, withMap]
+    [doc, data, meta, path, tab, visible, focused, lens, setLens, activeBoard, openBoard, selection, highlight, focusFilter, inspectorOpen, setInspectorOpen, withMap]
   )
 
   // keyboard: Alt+1..4 switch lenses
@@ -167,7 +182,7 @@ export default function FormMapView({ tab, visible, focused }: ViewProps) {
             </button>
           ))}
         </div>
-        <button className="clickable-icon small" title="Pitch mode — present zones as slides" onClick={() => ctl.present()}>
+        <button className="clickable-icon small" title="Pitch mode — present ordered groups as slides" onClick={() => ctl.present()}>
           <Presentation />
         </button>
         <button className={`clickable-icon small${inspectorOpen ? ' is-active' : ''}`} title="Toggle inspector" onClick={() => setInspectorOpen(!inspectorOpen)}>
@@ -211,7 +226,7 @@ function TemplatePicker({ onPick }: { onPick: (id: string) => void }) {
   return (
     <div className="fm-template-picker">
       <div className="fm-template-title">Start a form-map</div>
-      <div className="fm-template-sub">A richer canvas for deciding what to build — and having fun doing it.</div>
+      <div className="fm-template-sub">A more advanced canvas: cards with tags and fields, groups that give them meaning, and kanban boards.</div>
       <div className="fm-template-grid">
         {TEMPLATES.map((t) => (
           <button key={t.id} className="fm-template-card" onClick={() => onPick(t.id)}>

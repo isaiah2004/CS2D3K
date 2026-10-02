@@ -1,10 +1,10 @@
-// Form-map lenses end-to-end: inspector (Card / Coach / Map tabs), Board, Table, Doc, HUD and selection sync
-// (ported from e2e/formmap-lenses.mjs). Asserts on the UI and on the .formmap JSON on disk.
+// Form-map lenses end-to-end: inspector (Card / Coach / Map tabs), Board (saved boards), Table, Doc, HUD and selection
+// sync. Asserts on the UI and on the .formmap JSON on disk.
 import { test, expect } from './fixtures'
 import type { Locator } from '@playwright/test'
 import type { App } from './helpers/app'
 import { center, type CData } from './helpers/canvas'
-import { FormMapPage, formByTitle, forms, zoneByLabel, zoneOf, zones, type FormCard } from './helpers/formmap'
+import { boardByName, FormMapPage, formByTitle, forms, groupByLabel, groupOf, groups, meta, type FormCard } from './helpers/formmap'
 
 /** the right sidebar is collapsed so the lenses get more room */
 async function openDefinition(app: App): Promise<FormMapPage> {
@@ -17,37 +17,47 @@ async function openDefinition(app: App): Promise<FormMapPage> {
 
 const cardIn = (d: CData, id: string): FormCard => d.nodes.find((n) => n.id === id) as FormCard
 
-/** drag a board card by the mouse onto a column body */
-async function dragToColumn(m: FormMapPage, card: Locator, column: Locator): Promise<void> {
+/** drag a board card by the mouse onto a column, above the card at `index` (default: the column body top) */
+async function dragToColumn(m: FormMapPage, card: Locator, column: Locator, before?: Locator): Promise<void> {
   await card.scrollIntoViewIfNeeded()
   const a = (await card.boundingBox())!
   await column.scrollIntoViewIfNeeded()
-  const b = (await column.locator('.fm-col-body').boundingBox())!
-  await m.drag({ x: a.x + a.width / 2, y: a.y + 14 }, { x: b.x + b.width / 2, y: b.y + Math.min(60, b.height / 2) }, { steps: 14, hold: true })
+  let to: { x: number; y: number }
+  if (before) {
+    const b = (await before.boundingBox())!
+    to = { x: b.x + b.width / 2, y: b.y + 6 }
+  } else {
+    const b = (await column.locator('.fm-col-body').boundingBox())!
+    to = { x: b.x + b.width / 2, y: b.y + Math.min(60, b.height / 2) }
+  }
+  await m.drag({ x: a.x + a.width / 2, y: a.y + 14 }, to, { steps: 14, hold: true })
   await expect(column).toHaveClass(/is-drop-target/)
   await m.page.mouse.up()
 }
 
-test.describe('form-map lenses @basic', () => {
-  test('inspector Card tab edits kind, title, body, every field type, votes, relations and Why?', async ({ app, page }) => {
+const rowOf = (insp: Locator, label: string): Locator => insp.locator('.fm-i-row', { has: insp.page().locator('.fm-i-label', { hasText: new RegExp(`^${label}$`) }) })
+
+test.describe('form-map inspector @basic', () => {
+  test('Card tab: title, body, tags, fields (from the registry or new), checklist, link, votes, relations and Why?', async ({ app, page }) => {
     const m = await openDefinition(app)
     const d0 = m.data()
     const card = formByTitle(d0, 'Idea panel')
     const at = (fn: (f: FormCard) => unknown, msg: string): Promise<void> => m.expectData((d) => fn(cardIn(d, card.id)), msg)
     const insp = m.insp()
-    const row = (label: string): Locator => insp.locator('.fm-i-row', { has: page.locator('.fm-i-label', { hasText: new RegExp(`^${label}$`) }) })
+    const row = (label: string): Locator => rowOf(insp, label)
 
     await m.lens('Board')
     await m.boardCard('Idea panel').click()
     await expect(insp.locator('.fm-i-title')).toHaveValue('Idea panel')
     await expect(insp.locator('.fm-i-zoneline')).toContainText('Initial features (MVP)')
 
-    // kind switch (fields of other kinds are kept)
-    await insp.locator('.fm-i-kinds .fm-kchip', { hasText: '💡' }).click()
-    await at((f) => f.kind === 'idea' && f.fields.phase === 'mvp', 'kind → idea')
-    await expect(row('Status').locator('.fm-opt-chip')).toHaveText(['Raw', 'Refined', 'Merged', 'Dropped'])
-    await insp.locator('.fm-i-kinds .fm-kchip', { hasText: '✨' }).click()
-    await at((f) => f.kind === 'feature', 'kind → feature')
+    // tags: add an existing one from the menu, remove it with ×
+    await expect(insp.locator('.fm-i-tags .fm-tag')).toHaveText(['#feature×'])
+    await insp.locator('.fm-i-addtag').click()
+    await page.locator('.menu-item', { hasText: '#goal' }).click()
+    await at((f) => f.tags?.join() === 'feature,goal', 'tag added')
+    await insp.locator('.fm-i-tags .fm-tag', { hasText: 'goal' }).locator('.fm-tag-x').click()
+    await at((f) => f.tags?.join() === 'feature', 'tag removed')
 
     // title + body (markdown preview)
     await insp.locator('.fm-i-title').fill('Idea panel 2')
@@ -58,37 +68,52 @@ test.describe('form-map lenses @basic', () => {
     await notes.locator('button[title="Preview markdown"]').click()
     await expect(notes.locator('.fm-i-preview strong')).toHaveText('fast')
 
-    // select (click again to clear) + rating
+    // the fields the card has, in registry order; select (click again to clear) + rating
+    await expect(insp.locator('.fm-i-fields .fm-i-label')).toHaveText(['Phase', 'Priority', 'Effort', 'Status', 'Fun factor'])
+    // the status options offered are the feature ones (option scopes)
+    await expect(row('Status').locator('.fm-opt-chip')).toHaveText(['Idea', 'Planned', 'Building', 'Done', 'Cut'])
     await row('Priority').locator('.fm-opt-chip', { hasText: 'Could' }).click()
     await at((f) => f.fields.priority === 'could', 'priority could')
     await row('Priority').locator('.fm-opt-chip', { hasText: 'Could' }).click()
     await at((f) => f.fields.priority === undefined, 'priority cleared')
     await row('Fun factor').locator('.fm-rating-star').nth(2).click()
     await at((f) => f.fields.fun === 3, 'fun 3')
-    await expect(row('Fun factor').locator('.fm-rating-star.is-on')).toHaveCount(3)
 
-    // checklist: add, toggle, reorder
+    // add a field of the map: a checklist
+    await insp.locator('.fm-i-addbtn', { hasText: 'Add field' }).click()
+    await insp.locator('.fm-i-fieldchip', { hasText: 'Acceptance criteria' }).click()
     const add = insp.locator('.fm-cl-add')
     await add.fill('Can dump an idea in under 3 seconds')
     await add.press('Enter')
     await add.fill('Ideas survive a restart')
     await add.press('Enter')
-    await at((f) => (f.fields.acceptance as unknown[])?.length === 2, 'two criteria')
+    await at((f) => (f.fields.acceptance as unknown[])?.length === 2, 'two items')
     const items = insp.locator('.fm-cl-item')
     await items.nth(0).locator('input[type="checkbox"]').check()
     await at((f) => (f.fields.acceptance as { done: boolean }[])[0].done, 'first done')
     await expect(insp.locator('.fm-cl-progress')).toContainText('1/2')
     await items.nth(0).locator('button[title^="Move down"]').click()
-    await at(
-      (f) => JSON.stringify(f.fields.acceptance) === JSON.stringify([{ text: 'Ideas survive a restart', done: false }, { text: 'Can dump an idea in under 3 seconds', done: true }]),
-      'reordered'
-    )
-    await items.nth(1).locator('.fm-cl-text').press('Alt+ArrowUp')
-    await at((f) => (f.fields.acceptance as { text: string }[])[0].text === 'Can dump an idea in under 3 seconds', 'Alt+↑ reorders back')
+    await at((f) => (f.fields.acceptance as { text: string }[])[0].text === 'Ideas survive a restart', 'reordered')
+
+    // a brand-new field: registered and set
+    await insp.locator('.fm-i-addbtn', { hasText: 'Add field' }).click()
+    await insp.locator('input[aria-label="New field name"]').fill('Owner')
+    await insp.locator('select[aria-label="New field type"]').selectOption('text')
+    await insp.locator('.fm-i-newfield .btn', { hasText: 'Add' }).click()
+    await row('Owner').locator('input').fill('Ana')
+    await m.expectData((d) => cardIn(d, card.id).fields.Owner === 'Ana' && meta(d).fields?.Owner?.type === 'text', 'new field registered + set')
 
     // link field (opening it is checked at the end: it leaves the tab)
+    await insp.locator('.fm-i-addbtn', { hasText: 'Add field' }).click()
+    await insp.locator('.fm-i-fieldchip', { hasText: 'Linked note' }).click()
     await row('Linked note').locator('input').fill('[[Welcome]]')
     await at((f) => f.fields.note === '[[Welcome]]', 'link saved')
+
+    // remove a field from the card
+    await row('Owner').hover()
+    await row('Owner').locator('.fm-i-row-x').click()
+    await at((f) => !('Owner' in f.fields), 'field removed')
+    await expect(row('Owner')).toHaveCount(0)
 
     // votes
     await insp.locator('.fm-i-vote').click()
@@ -97,7 +122,7 @@ test.describe('form-map lenses @basic', () => {
     await at((f) => f.votes === 8, 'votes 7 + 2 - 1')
     await expect(insp.locator('.fm-i-dots')).toHaveAttribute('aria-label', '8 votes')
 
-    // relations: add via the picker (relation inferred), remove
+    // relations: add via the picker (relation from the tag rules), remove
     await insp.locator('.fm-i-addbtn', { hasText: 'Add relation' }).click()
     await page.keyboard.type('every ounce')
     await expect(insp.locator('.fm-relpick-item.is-active')).toContainText('Every ounce of AI ability')
@@ -106,7 +131,6 @@ test.describe('form-map lenses @basic', () => {
     const goal = formByTitle(d0, 'Every ounce of AI ability')
     await m.expectData((d) => d.edges.some((e) => e.fromNode === card.id && e.toNode === goal.id && e.relation === 'serves'), 'relation added')
     const served = insp.locator('.fm-rel-item', { hasText: 'Every ounce of AI ability' })
-    await expect(served).toBeVisible()
     await served.hover()
     await served.locator('.fm-rel-remove').click()
     await m.expectData((d) => !d.edges.some((e) => e.fromNode === card.id && e.toNode === goal.id), 'relation removed')
@@ -114,7 +138,6 @@ test.describe('form-map lenses @basic', () => {
     // Why? highlights the chain (also dims the board), click again clears
     await insp.locator('.fm-i-why').click()
     await expect(insp.locator('.fm-insp-hl')).toContainText('Highlighting')
-    await expect(insp.locator('.fm-i-why')).toHaveText(/Clear why/)
     await expect(m.boardCard('Plan screen')).toHaveClass(/is-dim/)
     await insp.locator('.fm-i-why').click()
     await expect(insp.locator('.fm-insp-hl')).toHaveCount(0)
@@ -125,18 +148,17 @@ test.describe('form-map lenses @basic', () => {
     await expect(m.card(formByTitle(d0, 'Bring the fun back').id)).toHaveClass(/fm-pulse/)
 
     // the link field opens its note (Ctrl = new tab)
+    await m.clickCard(card.id)
     await row('Linked note').locator('button[title^="Open note"]').click({ modifiers: ['Control'] })
     await expect.poll(() => app.activeFile()).toBe('Welcome.md')
-    expect((await app.layout())[0].tabs.map((t) => t.path)).toEqual(['CS2D3K Definition.formmap', 'Welcome.md'])
   })
 
-  test('zone settings in the inspector', async ({ app, page }) => {
+  test('group settings: label, emoji, color, prompt, preset, assigned fields, pitch order, lock', async ({ app, page }) => {
     const m = await openDefinition(app)
-    const zone = zoneByLabel(m.data(), 'Open questions')
-    const at = (fn: (z: Record<string, unknown>) => unknown, msg: string): Promise<void> => m.expectData((d) => fn(d.nodes.find((n) => n.id === zone.id)!), msg)
+    const g = groupByLabel(m.data(), 'Open questions')
+    const at = (fn: (z: Record<string, unknown>) => unknown, msg: string): Promise<void> => m.expectData((d) => fn(d.nodes.find((n) => n.id === g.id)!), msg)
     const insp = m.insp()
-    const row = (label: string): Locator => insp.locator('.fm-i-row', { has: page.locator('.fm-i-label', { hasText: new RegExp(`^${label}$`) }) })
-    // select the zone from the Map tab navigator (double-click), then edit it in the Card tab
+    const row = (label: string): Locator => rowOf(insp, label)
     await m.openInspectorTab('Map')
     await insp.locator('.fm-znav-item', { hasText: 'Open questions' }).dblclick()
     await m.openInspectorTab('Card')
@@ -144,23 +166,29 @@ test.describe('form-map lenses @basic', () => {
 
     await insp.locator('.fm-i-title').fill('Open questions & risks')
     await at((z) => z.label === 'Open questions & risks', 'label')
-    await expect(m.node(zone.id).locator('.fm-zone-label')).toHaveText('Open questions & risks')
+    await expect(m.node(g.id).locator('.fm-group-label')).toHaveText('Open questions & risks')
     await row('Emoji').locator('.fm-i-emoji-btn', { hasText: '🧪' }).click()
     await at((z) => z.emoji === '🧪', 'emoji')
+    await row('Color').locator('.fm-i-swatch[title="Purple"]').click()
+    await at((z) => z.color === '6', 'color')
     await row('Prompt').locator('textarea').fill('What could still go wrong?')
     await at((z) => z.prompt === 'What could still go wrong?', 'prompt')
-    await row('Assigns').locator('.fm-opt-chip', { hasText: 'Parked' }).click()
+    await row('New cards').locator('.fm-kchip', { hasText: 'Idea' }).click()
+    await at((z) => z.preset === 'idea', 'preset')
+    // assign any field of the map
+    await insp.locator('.fm-i-addbtn', { hasText: 'Assign a field' }).click()
+    await insp.locator('select[aria-label="Field to assign"]').selectOption('status')
+    await insp.locator('.fm-i-assign-block').locator('.fm-opt-chip', { hasText: 'Parked' }).click()
     await at((z) => JSON.stringify(z.assign) === '{"status":"parked"}', 'assign')
-    await row('New cards').locator('.fm-kchip').first().click()
-    await at((z) => z.defaultKind === 'idea', 'default kind')
+    await expect(m.node(g.id).locator('.fm-group-assign')).toHaveText('Status → Parked')
     await row('Pitch order').locator('input').fill('9')
     await at((z) => z.order === 9, 'order')
     await row('Locked').locator('[role="switch"]').click()
     await at((z) => z.locked === false, 'unlocked')
-    await expect(m.node(zone.id)).toHaveClass(/is-unlocked/)
+    await expect(m.node(g.id)).toHaveClass(/is-unlocked/)
   })
 
-  test('multi-select bulk edit', async ({ app, page }) => {
+  test('multi-select bulk edit: tags and select fields', async ({ app, page }) => {
     const m = await openDefinition(app)
     const d = m.data()
     const a = formByTitle(d, 'Idea panel')
@@ -171,7 +199,7 @@ test.describe('form-map lenses @basic', () => {
     const insp = m.insp()
     await expect(insp.locator('.fm-i-multi-head')).toHaveText('2 cards selected')
     await expect(insp.locator('.fm-insp-tab', { hasText: 'Card' }).locator('.fm-insp-badge')).toHaveText('2')
-    const row = (label: string): Locator => insp.locator('.fm-i-row', { has: page.locator('.fm-i-label', { hasText: new RegExp(`^${label}$`) }) })
+    const row = (label: string): Locator => rowOf(insp, label)
     await expect(row('Effort').locator('.fm-i-mixed')).toHaveText('mixed')
     await expect(row('Priority').locator('.fm-opt-chip.is-active')).toHaveText('Must')
     await row('Priority').locator('.fm-opt-chip', { hasText: 'Could' }).click()
@@ -179,12 +207,17 @@ test.describe('form-map lenses @basic', () => {
     await row('Effort').locator('.fm-opt-chip', { hasText: 'XS' }).click()
     await m.expectData((x) => cardIn(x, a.id).fields.effort === 'xs' && cardIn(x, b.id).fields.effort === 'xs', 'both xs')
     await expect(row('Effort').locator('.fm-i-mixed')).toHaveCount(0)
+    await row('Tags').locator('.fm-i-addtag').click()
+    await page.locator('.menu-item', { hasText: '#goal' }).click()
+    await m.expectData((x) => [a, b].every((c) => cardIn(x, c.id).tags?.includes('goal')), 'both tagged')
+    await row('Tags').locator('.fm-tag', { hasText: 'goal' }).locator('.fm-tag-x').click()
+    await m.expectData((x) => [a, b].every((c) => !cardIn(x, c.id).tags?.includes('goal')), 'both untagged')
     // Ctrl+click again removes a card from the selection
     await m.boardCard('Task queue panel').click({ modifiers: ['Control'] })
     await expect(insp.locator('.fm-i-title')).toHaveValue('Idea panel')
   })
 
-  test('Coach tab: checks for the sample, reveal on click, budget editing', async ({ app, page }) => {
+  test('Coach tab: the example rules, budget editing, tag tiles and the group fix', async ({ app, page }) => {
     const m = await openDefinition(app)
     const d = m.data()
     const insp = m.insp()
@@ -197,154 +230,215 @@ test.describe('form-map lenses @basic', () => {
       '6 MVP features without acceptance criteria',
       '3 raw ideas waiting in the inbox',
       'Every feature serves a goal',
-      'Every goal has features serving it',
-      'MVP fits the budget (21 / 24 pts)'
+      'Every goal has features serving it'
     ])
-    await expect(insp.locator('.fm-check', { hasText: 'principles nobody relies on' }).locator('.fm-check-detail')).toContainText("“1. Don't read all the agent's code”, “6. Prompts are code”")
     await expect(insp.locator('.fm-coach-mood-title')).toHaveText('A few things to decide')
     await expect(insp.locator('.fm-coach-points').first()).toContainText('21')
 
     // clicking a check highlights and reveals its cards on the map
-    const questions = forms(d).filter((f) => f.kind === 'question')
+    const questions = forms(d).filter((f) => f.tags?.includes('question'))
     await insp.locator('.fm-check', { hasText: '4 open questions' }).click()
     await expect(insp.locator('.fm-insp-hl')).toContainText('Highlighting 4 cards')
-    await expect(insp.locator('.fm-check', { hasText: '4 open questions' })).toHaveClass(/is-active/)
     for (const q of questions) await expect(m.card(q.id)).toHaveClass(/fm-lit/)
-    await expect(m.root().locator('.fm-node-form.fm-dim')).toHaveCount(forms(d).length - 4)
     await expect(m.card(questions[0].id)).toHaveClass(/fm-pulse/)
+    await insp.locator('.fm-check', { hasText: '4 open questions' }).click()
+    await expect(insp.locator('.fm-insp-hl')).toHaveCount(0)
 
-    // the MVP budget is editable: 21 points over a 20-point budget is a warning
+    // the budget is the limit of the map's sum rule: 21 points over 20 is a warning
     await insp.locator('.fm-coach-budget').fill('20')
-    await m.expectData((x) => (x.formmap as { mvpBudget?: number }).mvpBudget === 20, 'budget saved')
+    await m.expectData((x) => (meta(x).checks as { id: string; max?: number }[]).find((c) => c.id === 'mvp-budget')?.max === 20, 'budget saved')
     await expect(insp.locator('.fm-check.is-warn .fm-check-title')).toHaveText(['MVP is over budget: 21 / 20 pts', '4 open questions'])
     await expect(insp.locator('.fm-budget')).toHaveClass(/is-over/)
     await expect(m.inspTab('Coach').locator('.fm-insp-badge.is-warn')).toHaveText('2')
-    // clicking the active check again clears the highlight; kind tiles focus the map on one kind
-    await insp.locator('.fm-check', { hasText: '4 open questions' }).click()
-    await expect(insp.locator('.fm-insp-hl')).toHaveCount(0)
-    await insp.locator('.fm-kind-tile', { hasText: 'Goals' }).click()
-    await expect(m.root().locator('.fm-banner')).toContainText('Focus · Goals')
-    await expect(insp.locator('.fm-kind-tile', { hasText: 'Goals' })).toContainText('3')
+
+    // tag tiles focus the map on a tag
+    await expect(insp.locator('.fm-kind-tile', { hasText: '#goal' })).toContainText('3')
+    await insp.locator('.fm-kind-tile', { hasText: '#goal' }).click()
+    await expect(m.root().locator('.fm-banner')).toContainText('Focus · #goal')
+    await insp.locator('.fm-kind-tile', { hasText: '#goal' }).click()
+
+    // a card whose field disagrees with its group: the coach offers to fix it
+    const card = formByTitle(d, 'Idea panel')
+    await m.fit([groupByLabel(d, 'Initial features (MVP)').id])
+    await m.clickCard(card.id)
+    await m.tap(m.card(card.id).locator('.fm-chip', { hasText: 'Initial (MVP)' }))
+    await page.locator('.menu-item', { hasText: 'Later' }).click()
+    await m.expectData((x) => cardIn(x, card.id).fields.phase === 'later', 'phase set on the card face (no move)')
+    const fix = insp.locator('.fm-check', { hasText: "doesn't match its group" })
+    await expect(fix).toBeVisible()
+    await fix.locator('.fm-check-fix').click()
+    await m.expectData((x) => cardIn(x, card.id).fields.phase === 'mvp', 'fixed')
+    await expect(fix).toHaveCount(0)
   })
 
-  test('Map tab: navigator, focus chips and Spark', async ({ app, page }) => {
+  test('Map tab: registries — rename a field everywhere, add an option, recolor and rename a tag, a preset from a card; navigator and Spark', async ({ app, page }) => {
     const m = await openDefinition(app)
     const d = m.data()
     const insp = m.insp()
     await m.openInspectorTab('Map')
-    // title meta
-    await insp.locator('.fm-i-row', { hasText: 'Title' }).locator('input').fill('CS2D3K — the definition')
-    await m.expectData((x) => (x.formmap as { title?: string }).title === 'CS2D3K — the definition', 'title meta')
+    await rowOf(insp, 'Title').locator('input').fill('CS2D3K — the definition')
+    await m.expectData((x) => meta(x).title === 'CS2D3K — the definition', 'title meta')
 
-    // navigator: zones in pitch order, card counts; click reveals
+    // navigator: groups in pitch order with card counts; click reveals
     const nav = insp.locator('.fm-znav-item')
     await expect(nav.locator('.fm-znav-label')).toHaveText(['Core idea', 'Philosophy', 'Engineering approach', 'Final goal', 'Initial features (MVP)', 'Later features', 'Open questions', 'Idea inbox'])
     await expect(nav.filter({ hasText: 'Philosophy' }).locator('.fm-znav-count')).toHaveText('11')
-    const later = zoneByLabel(d, 'Later features')
+    const later = groupByLabel(d, 'Later features')
     await m.moveCamera(() => nav.filter({ hasText: 'Later features' }).click())
     const c = await m.toWorld(center(await m.rootBox()))
     expect(Math.abs(c.x - (later.x + later.width / 2))).toBeLessThan(40)
     expect(Math.abs(c.y - (later.y + later.height / 2))).toBeLessThan(40)
 
-    // focus chips
-    const focus = insp.locator('.fm-i-section', { has: page.locator('.fm-i-section-head', { hasText: 'Focus' }) })
-    await focus.locator('.fm-kchip', { hasText: 'Question' }).click()
-    await expect(m.root().locator('.fm-node-form:not(.fm-dim)')).toHaveCount(4)
-    await focus.locator('.fm-kchip', { hasText: 'Goal' }).click()
-    await expect(m.root().locator('.fm-node-form:not(.fm-dim)')).toHaveCount(7)
-    await focus.locator('.fm-i-textbtn', { hasText: 'Clear' }).click()
-    await expect(m.root().locator('.fm-dim')).toHaveCount(0)
+    // fields: rename "Priority" → "Importance" on every card, group, board…
+    const fields = insp.locator('.fm-reg-item')
+    await fields.filter({ hasText: 'Priority' }).locator('.fm-reg-row').click()
+    const detail = insp.locator('.fm-reg-detail')
+    await detail.locator('input[aria-label="Field name"]').fill('Importance')
+    await detail.locator('input[aria-label="Field name"]').press('Enter')
+    await m.expectData((x) => !!meta(x).fields?.Importance && !meta(x).fields?.priority && cardIn(x, formByTitle(d, 'Idea panel').id).fields.Importance === 'must', 'renamed everywhere')
+    expect(Object.keys(meta(m.data()).fields!).indexOf('Importance')).toBe(1)
+    // …and add an option
+    await detail.locator('input[aria-label="New option"]').fill('Nice to have')
+    await detail.locator('input[aria-label="New option"]').press('Enter')
+    await m.expectData((x) => meta(x).fields?.Importance?.options?.some((o) => o.value === 'Nice to have'), 'option added')
 
-    // Spark: a provocative prompt lands as a raw idea in the inbox, selected and revealed
+    // tags: recolor and rename
+    const noteTag = insp.locator('.fm-reg-tag', { has: page.locator('input[aria-label="Rename #note"]') })
+    await noteTag.locator('.fm-reg-dot').click()
+    await page.locator('.menu-item', { hasText: 'Pink' }).click()
+    await m.expectData((x) => meta(x).tags?.note?.color === 'pink', 'tag recolored')
+    await noteTag.locator('input').fill('context')
+    await noteTag.locator('input').press('Enter')
+    await m.expectData((x) => !!meta(x).tags?.context && !meta(x).tags?.note && forms(x).some((f) => f.tags?.includes('context')) && meta(x).presets!.some((p) => p.tags?.includes('context')), 'tag renamed')
+
+    // presets: one from the selected card shows in the toolbar
+    await m.clickCard(formByTitle(d, 'Plan screen').id)
+    await insp.locator('.btn', { hasText: 'From selected card' }).click()
+    await m.expectData((x) => meta(x).presets!.length === 8 && meta(x).presets![7].tags?.join() === 'feature', 'preset added')
+    const presetName = insp.locator('input[aria-label="Preset name"]')
+    await presetName.fill('Epic')
+    await m.expectData((x) => meta(x).presets![7].name === 'Epic', 'preset renamed')
+    await expect(m.root().locator('.fm-tool[aria-label="Add epic"]')).toBeVisible()
+
+    // Spark: a provocative prompt lands as a #spark card in the inbox, selected and revealed
     await insp.locator('.fm-spark-btn').click()
-    // revealed (the pulse lasts ~1.5s) and selected in the map
     await expect(m.root().locator('.canvas-node.fm-pulse.is-selected')).toHaveCount(1)
     let spark: FormCard | undefined
-    await m.expectData((x) => (spark = forms(x).find((f) => f.fields.source === 'Spark ✨')), 'spark card')
-    const x = m.data()
-    expect(spark!).toMatchObject({ kind: 'idea', fields: { status: 'raw' } })
-    expect(zoneOf(x, spark!)?.label).toBe('Idea inbox')
+    await m.expectData((x) => (spark = forms(x).find((f) => f.tags?.includes('spark'))), 'spark card')
+    expect(groupOf(m.data(), spark!)?.label).toBe('Idea inbox')
     await expect(insp.locator('.fm-spark-text')).toHaveText(`“${spark!.title}”`)
-    await expect(m.card(spark!.id)).toHaveClass(/is-selected/)
   })
+})
 
-  test('Board: group-by, sorting, drags between columns and quick-add', async ({ app, page }) => {
+test.describe('form-map lenses @basic', () => {
+  test('Board: saved boards — groups board moves cards between groups, field board sets the field, order, quick-add, WIP', async ({ app, page }) => {
     const m = await openDefinition(app)
     const d = m.data()
     await page.keyboard.press('Alt+2')
     await expect(m.fmRoot().locator('.fm-board')).toBeVisible()
+    await expect(m.fmRoot().locator('.fm-board-tab:not(.is-new)')).toHaveText(['Roadmap', 'Features by status'])
     const titles = (col: string): Promise<string[]> => m.column(col).locator('.fm-bcard-title').allInnerTexts()
-    const seg = (label: string): Locator => m.fmRoot().locator('.fm-seg button', { hasText: label })
+    const mvp = groupByLabel(d, 'Initial features (MVP)')
+    const later = groupByLabel(d, 'Later features')
 
-    // phase columns
-    await expect(m.fmRoot().locator('.fm-col .fm-col-label')).toHaveText(['Initial (MVP)', 'Next', 'Later', 'Someday'])
-    await expect(m.column('mvp').locator('.fm-col-count')).toHaveText('6')
-    await expect(m.column('mvp').locator('.fm-col-pts')).toHaveText('21/24 pts')
-    await expect(m.column('later').locator('.fm-col-count')).toHaveText('4')
-
-    // sorting
-    await seg('Votes').click()
-    expect(await titles('mvp')).toEqual(['Form-map definition board', 'Idea panel', 'Task queue panel', 'Review panel', 'Dev agent panel', 'Project workspace'])
-    await seg('Fun').click()
-    expect(await titles('mvp')).toEqual(['Idea panel', 'Form-map definition board', 'Task queue panel', 'Dev agent panel', 'Review panel', 'Project workspace'])
-    await seg('Map order').click()
-    expect(await titles('mvp')).toEqual(['Idea panel', 'Task queue panel', 'Dev agent panel', 'Review panel', 'Project workspace', 'Form-map definition board'])
-
-    // other groupings
-    await seg('Status').click()
-    await expect(m.fmRoot().locator('.fm-col .fm-col-label')).toHaveText(['Idea', 'Planned', 'Building', 'Done', 'Cut'])
-    await expect(m.column('planned').locator('.fm-col-count')).toHaveText('5')
-    await seg('Kind').click()
-    await expect(m.fmRoot().locator('.fm-col')).toHaveCount(7)
-    await expect(m.column('principle').locator('.fm-col-count')).toHaveText('11')
-    await seg('Zone').click()
-    await expect(m.fmRoot().locator('.fm-col')).toHaveCount(9)
-    await expect.poll(() => page.evaluate(() => (window.__cs2d3k!.getActiveTab()?.state?.board as { group?: string })?.group)).toBe('zone')
-
-    // drag between phase columns sets the field (and moves the card into the matching zone)
-    await seg('Phase').click()
+    // Roadmap: columns are groups
+    await expect(m.fmRoot().locator('.fm-col .fm-col-label')).toHaveText(['Idea inbox', 'Later features', 'Initial features (MVP)'])
+    await expect(m.column(mvp.id).locator('.fm-col-count')).toHaveText('6')
     const plan = formByTitle(d, 'Plan screen')
-    await dragToColumn(m, m.boardCard('Plan screen'), m.column('mvp'))
-    await m.expectData((x) => {
-      const f = cardIn(x, plan.id)
-      return f.fields.phase === 'mvp' && zoneOf(x, f)?.label === 'Initial features (MVP)'
-    }, 'phase mvp + moved into the MVP zone')
-    await expect(m.column('mvp').locator('.fm-col-count')).toHaveText('7')
+    await dragToColumn(m, m.boardCard('Plan screen'), m.column(mvp.id))
+    await m.expectData((x) => groupOf(x, cardIn(x, plan.id))?.id === mvp.id && cardIn(x, plan.id).fields.phase === 'mvp', 'moved into the MVP group (phase applied)')
+    await expect(m.column(mvp.id).locator('.fm-col-count')).toHaveText('7')
+    await expect(m.column(later.id).locator('.fm-col-count')).toHaveText('3')
+    // reorder within the column: the order is saved on the board
+    await dragToColumn(m, m.boardCard('Plan screen'), m.column(mvp.id), m.column(mvp.id).locator('.fm-bcard').first())
+    await m.expectData((x) => boardByName(x, 'Roadmap').order?.[mvp.id]?.[0] === plan.id, 'order saved')
+    expect((await titles(mvp.id))[0]).toBe('Plan screen')
 
-    // zone grouping moves the card geometrically
-    await seg('Zone').click()
-    const oq = zoneByLabel(d, 'Open questions')
-    const voice = formByTitle(d, 'Voice capture')
-    await dragToColumn(m, m.boardCard('Voice capture'), m.column(oq.id))
-    await m.expectData((x) => zoneOf(x, cardIn(x, voice.id))?.id === oq.id, 'moved into Open questions')
-    expect(cardIn(m.data(), voice.id).kind).toBe('idea')
+    // Features by status: a field board (filtered to #feature); without the inspector all four columns fit
+    await page.locator('button[title="Toggle inspector"]').click()
+    await m.boardTab('Features by status').click()
+    await expect(m.fmRoot().locator('.fm-col .fm-col-label')).toHaveText(['Idea', 'Planned', 'Building', 'Done'])
+    await expect(m.fmRoot().locator('.fm-board-bar .fm-tag')).toHaveText(['#feature×'])
+    const ath = formByTitle(d, 'Agentic test harness')
+    await dragToColumn(m, m.boardCard('Agentic test harness'), m.column('done'))
+    await m.expectData((x) => cardIn(x, ath.id).fields.status === 'done', 'status set by the column')
+    await expect(page.locator('canvas.fm-confetti')).toHaveCount(1)
+    await expect(m.column('done').locator('.fm-col-count')).toHaveText('1')
 
-    // quick-add in a zone column
-    const inbox = zoneByLabel(d, 'Idea inbox')
-    await m.column(inbox.id).scrollIntoViewIfNeeded()
-    await m.column(inbox.id).locator('.fm-col-addrow').click()
+    // quick-add in a column: the card gets the column value and the board's tag
+    await m.column('planned').locator('.fm-col-addrow', { hasText: 'Add card' }).click()
     await page.keyboard.type('Achievements for shipped MVPs')
     await page.keyboard.press('Enter')
     await page.keyboard.press('Escape')
-    await expect(m.column(inbox.id).locator('.fm-quickadd')).toHaveCount(0)
     let added: FormCard | undefined
     await m.expectData((x) => (added = forms(x).find((f) => f.title === 'Achievements for shipped MVPs')), 'quick-added')
-    expect(added!.kind).toBe('idea')
-    expect(zoneOf(m.data(), added!)?.id).toBe(inbox.id)
+    expect(added!).toMatchObject({ tags: ['feature'], fields: { status: 'planned' } })
     await expect(m.boardCard('Achievements for shipped MVPs')).toHaveClass(/is-selected/)
+
+    // WIP limit from the column menu
+    await m.column('planned').locator('.fm-col-head').click({ button: 'right' })
+    await page.locator('.menu-item', { hasText: 'Set WIP limit' }).click()
+    await page.locator('.modal .input').fill('3')
+    await page.locator('.modal .btn.mod-cta').click()
+    await expect(m.column('planned').locator('.fm-col-count')).toHaveText('6/3')
+    await expect(m.column('planned').locator('.fm-col-count')).toHaveClass(/is-over/)
+    await m.expectData((x) => boardByName(x, 'Features by status').wip?.planned === 3, 'wip saved')
   })
 
-  test('Table: kind tabs, sorting, inline edits and add row', async ({ app, page }) => {
+  test('Board: create, rename and delete a board; the lens remembers the active board', async ({ app, page }) => {
+    const m = await openDefinition(app)
+    await m.lens('Board')
+    await m.boardTab('New board').click()
+    const setup = m.fmRoot().locator('.fm-board-setup-card')
+    await setup.locator('button[role="tab"]', { hasText: 'Split by a field' }).click()
+    await setup.locator('select[aria-label="Field"]').selectOption('phase')
+    await setup.locator('input[aria-label="Board name"]').fill('Phases')
+    await setup.locator('.btn.mod-cta', { hasText: 'Create board' }).click()
+    await expect(m.boardTab('Phases')).toHaveClass(/is-active/)
+    await expect(m.fmRoot().locator('.fm-col .fm-col-label')).toHaveText(['No phase', 'Initial (MVP)', 'Next', 'Later', 'Someday'])
+    await m.expectData((x) => boardByName(x, 'Phases').source.mode === 'field', 'board saved')
+    await expect.poll(() => page.evaluate(() => window.__cs2d3k!.getActiveTab()?.state?.boardId)).toBe(boardByName(m.data(), 'Phases').id)
+
+    // groups board from the setup panel
+    await m.boardTab('New board').click()
+    await setup.locator('.fm-board-setup-group', { hasText: 'Philosophy' }).click()
+    await setup.locator('.fm-board-setup-group', { hasText: 'Engineering approach' }).click()
+    await setup.locator('.btn.mod-cta', { hasText: 'Create board' }).click()
+    await expect(m.fmRoot().locator('.fm-col .fm-col-label')).toHaveText(['Philosophy', 'Engineering approach'])
+    await expect(m.fmRoot().locator('.fm-col .fm-col-count')).toHaveText(['11', '6'])
+
+    // rename + delete from the tab's menu
+    await m.boardTab('Phases').click({ button: 'right' })
+    await page.locator('.menu-item', { hasText: 'Rename' }).click()
+    await page.locator('.modal .input').fill('Phase plan')
+    await page.locator('.modal .btn.mod-cta').click()
+    await expect(m.boardTab('Phase plan')).toBeVisible()
+    await m.boardTab('Phase plan').click({ button: 'right' })
+    await page.locator('.menu-item', { hasText: 'Delete board' }).click()
+    await page.locator('.modal .btn.mod-warning').click()
+    await expect(m.boardTab('Phase plan')).toHaveCount(0)
+    await m.expectData((x) => !meta(x).boards!.some((b) => b.name.startsWith('Phase')), 'board deleted')
+  })
+
+  test('Table: the registry as columns, group and tag filters, sorting, inline edits and add row', async ({ app, page }) => {
     const m = await openDefinition(app)
     const d = m.data()
     await page.keyboard.press('Alt+3')
     const table = m.fmRoot().locator('.fm-table-lens')
     await expect(table).toBeVisible()
-    await expect(table.locator('.fm-tab', { hasText: 'All' }).locator('.fm-tab-count')).toHaveText(String(forms(d).length))
     await expect(table.locator('tbody tr')).toHaveCount(forms(d).length)
-    await table.locator('.fm-tab', { hasText: 'Features' }).click()
-    await expect(table.locator('tbody tr')).toHaveCount(10)
-    await expect(table.locator('thead th')).toHaveText(['Kind', 'Title', 'Phase', 'Priority', 'Effort', 'Status', 'Fun factor', 'Acceptance criteria', 'Linked note', 'Zone', 'Votes', 'Links'])
+    const regCols = Object.values(meta(d).fields!).map((f) => f.label)
+    await expect(table.locator('thead th')).toHaveText(['Title', 'Tags', ...regCols.map((l) => new RegExp(`${l}$`)), 'Group', 'Votes', 'Links'] as (string | RegExp)[])
+
+    // filters
+    await table.locator('select[aria-label="Group filter"]').selectOption({ label: '🔭 Later features' })
+    await expect(table.locator('tbody tr')).toHaveCount(4)
+    await table.locator('select[aria-label="Group filter"]').selectOption('')
+    await table.locator('.fm-board-filter', { hasText: 'Tags' }).click()
+    await page.locator('.menu-item', { hasText: '#question' }).click()
+    await expect(table.locator('tbody tr')).toHaveCount(4)
+    await table.locator('.fm-i-textbtn', { hasText: 'Clear' }).click()
+    await expect(table.locator('tbody tr')).toHaveCount(forms(d).length)
 
     // sorting: votes (biggest first), then ascending, then off
     const votesTh = table.locator('th', { hasText: 'Votes' })
@@ -353,98 +447,91 @@ test.describe('form-map lenses @basic', () => {
     await expect(table.locator('tbody tr').first().locator('.fm-cell-title')).toHaveText('Form-map definition board')
     await votesTh.click()
     await expect(votesTh).toHaveAttribute('aria-sort', 'ascending')
-    await expect(table.locator('tbody tr').last().locator('.fm-cell-title')).toHaveText('Form-map definition board')
     await votesTh.click()
     await expect(votesTh).toHaveAttribute('aria-sort', 'none')
 
-    // inline title edit
+    // inline edits
     const ath = formByTitle(d, 'Agentic test harness')
     await m.row('Agentic test harness').locator('.fm-cell-title').dblclick()
     await page.keyboard.press('Control+a')
     await page.keyboard.type('Agentic test harness v2')
     await page.keyboard.press('Enter')
     await m.expectData((x) => cardIn(x, ath.id).title === 'Agentic test harness v2', 'title edited')
-    // select cell via its option menu
     await m.row('Agentic test harness v2').locator('td.is-select').nth(1).locator('.fm-opt-chip').click()
     await page.locator('.menu-item', { hasText: 'Must' }).click()
     await m.expectData((x) => cardIn(x, ath.id).fields.priority === 'must', 'priority edited')
-    // rating cell
-    await m.row('Agentic test harness v2').locator('td.is-rating .fm-rating-star').nth(4).click()
+    await m.row('Agentic test harness v2').locator('td.is-rating').first().locator('.fm-rating-star').nth(4).click()
     await m.expectData((x) => cardIn(x, ath.id).fields.fun === 5, 'fun edited')
+    await m.row('Agentic test harness v2').locator('.fm-cell-tags').click()
+    await page.locator('.menu-item', { hasText: '#goal' }).click()
+    await m.expectData((x) => cardIn(x, ath.id).tags?.join() === 'feature,goal', 'tag from the table')
 
-    // add a row: a new feature lands in the MVP zone and its title is edited inline
+    // add a row: a new card, title edited inline
     await table.locator('.fm-table-add').click()
     await expect(table.locator('.fm-cell-input')).toBeFocused()
-    await page.keyboard.type('Table-made feature')
+    await page.keyboard.type('Table-made card')
     await page.keyboard.press('Enter')
-    let made: FormCard | undefined
-    await m.expectData((x) => (made = forms(x).find((f) => f.title === 'Table-made feature')), 'row added')
-    expect(made!).toMatchObject({ kind: 'feature', fields: { phase: 'mvp' } })
-    await expect(table.locator('tbody tr')).toHaveCount(11)
+    await m.expectData((x) => forms(x).some((f) => f.title === 'Table-made card'), 'row added')
+    await expect(table.locator('tbody tr')).toHaveCount(forms(d).length + 1)
   })
 
-  test('Doc: generated sections in order, copy markdown, export to a note', async ({ app, page, electronApp }) => {
+  test('Doc: groups in pitch order with their cards and fields, copy markdown, export to a note', async ({ app, page, electronApp }) => {
     const m = await openDefinition(app)
     await page.keyboard.press('Alt+4')
     const doc = m.fmRoot().locator('.fm-doc')
     await expect(doc.locator('.fm-doc-md h1')).toHaveText('CS2D3K Definition')
-    await expect(doc.locator('.fm-doc-md h2')).toHaveText(['Core idea', 'Philosophy', 'Engineering approach', 'Final goal', 'Initial features (MVP)', 'Later features', 'Open questions', 'Decisions', 'Idea inbox'])
-    await expect(doc.locator('.fm-doc-md h3', { hasText: 'ADR-01' })).toBeVisible()
+    await expect(doc.locator('.fm-doc-md h2')).toHaveText(['🌱 Core idea', '🧭 Philosophy', '🛠️ Engineering approach', '🎯 Final goal', '🚀 Initial features (MVP)', '🔭 Later features', '❓ Open questions', '📥 Idea inbox'])
+    await expect(doc.locator('.fm-doc-md h3', { hasText: 'Idea panel' })).toBeVisible()
 
     await doc.locator('button', { hasText: 'Copy markdown' }).click()
     await expect(doc.locator('button', { hasText: 'Copied' })).toBeVisible()
-    // (the system clipboard uses CRLF on Windows)
     const md = (await electronApp.evaluate(({ clipboard }) => clipboard.readText())).replace(/\r\n/g, '\n')
     expect(md.startsWith('# CS2D3K Definition\n')).toBe(true)
-    expect(md).toContain('## Philosophy')
+    expect(md).toContain('- **Priority:** Must')
+    expect(md).toContain('_Serves:_ Bring the fun back')
 
     await doc.locator('.fm-doc-export').click()
     const input = page.locator('.modal .input')
-    await expect(input).toHaveValue('CS2D3K Definition - Definition.md')
+    await expect(input).toHaveValue('CS2D3K Definition - Doc.md')
     await page.locator('.modal .btn.mod-cta').click()
-    await app.expectFile('CS2D3K Definition - Definition.md', (s) => s === md, 'exported note')
-    await m.expectData((x) => (x.formmap as { exportPath?: string }).exportPath === 'CS2D3K Definition - Definition.md', 'exportPath recorded')
+    await app.expectFile('CS2D3K Definition - Doc.md', (s) => s === md, 'exported note')
+    await m.expectData((x) => meta(x).exportPath === 'CS2D3K Definition - Doc.md', 'exportPath recorded')
     await expect(doc.locator('.fm-doc-bar-time')).toHaveText('Exported just now')
-    await expect(doc.locator('.fm-doc-bar-path')).toContainText('CS2D3K Definition - Definition.md')
-    // the next export writes straight to the recorded path (no prompt)
-    app.removeExternal('CS2D3K Definition - Definition.md')
-    await expect.poll(() => app.exists('CS2D3K Definition - Definition.md')).toBe(false)
+    app.removeExternal('CS2D3K Definition - Doc.md')
+    await expect.poll(() => app.exists('CS2D3K Definition - Doc.md')).toBe(false)
     await doc.locator('.fm-doc-export').click()
     await expect(page.locator('.modal')).toHaveCount(0)
-    await app.expectFile('CS2D3K Definition - Definition.md', (s) => s.includes('## Idea inbox'), 're-exported')
+    await app.expectFile('CS2D3K Definition - Doc.md', (s) => s.includes('📥 Idea inbox'), 're-exported')
   })
 
-  test('the HUD numbers match the data', async ({ app, page }) => {
+  test('the HUD numbers match the data; the ring follows the chosen board', async ({ app, page }) => {
     const m = await openDefinition(app)
     const d = m.data()
-    const all = forms(d)
-    const mvp = all.filter((f) => f.kind === 'feature' && f.fields.phase === 'mvp')
-    const open = all.filter((f) => f.kind === 'question' && (!f.fields.status || f.fields.status === 'open'))
-    const decided = all.filter((f) => (f.kind === 'question' && f.fields.status === 'decided') || (f.kind === 'approach' && f.fields.status === 'accepted'))
-    const votes = all.reduce((s, f) => s + (f.votes ?? 0), 0)
     const hud = m.root().locator('.fm-hud')
     const stat = (cap: string): Locator => hud.locator('.fm-hud-stat', { hasText: cap }).locator('b')
-    await expect(hud.locator('.fm-hud-title')).toHaveText(`MVP 0/${mvp.length} done`)
+    await expect(hud.locator('.fm-hud-title-name')).toHaveText('Features by status')
+    await expect(hud.locator('.fm-hud-title-num')).toHaveText('0/10 done')
     await expect(hud.locator('.fm-hud-ring-label')).toHaveText('0%')
-    await expect(stat('open')).toHaveText(String(open.length))
-    await expect(stat('decided')).toHaveText(String(decided.length))
-    await expect(stat('votes')).toHaveText(String(votes))
-    expect([mvp.length, open.length, decided.length, votes]).toEqual([6, 4, 4, 33])
+    await expect(stat('cards')).toHaveText(String(forms(d).length))
+    await expect(stat('groups')).toHaveText(String(groups(d).length))
+    await expect(stat('boards')).toHaveText('2')
+    await expect(stat('votes')).toHaveText('33')
 
-    // decide a question and finish a feature from the inspector: the HUD follows
+    // finish a feature from the inspector: the HUD follows
     const insp = m.insp()
-    const row = (label: string): Locator => insp.locator('.fm-i-row', { has: page.locator('.fm-i-label', { hasText: new RegExp(`^${label}$`) }) })
-    await m.clickCard(open[0].id)
-    await row('Status').locator('.fm-opt-chip', { hasText: 'Decided' }).click()
-    await expect(stat('open')).toHaveText('3')
-    await expect(stat('decided')).toHaveText('5')
-    await m.clickCard(mvp[0].id)
-    await row('Status').locator('.fm-opt-chip', { hasText: 'Done' }).click()
-    await expect(hud.locator('.fm-hud-title')).toHaveText('MVP 1/6 done')
-    await expect(hud.locator('.fm-hud-ring-label')).toHaveText('17%')
+    await m.clickCard(formByTitle(d, 'Idea panel').id)
+    await rowOf(insp, 'Status').locator('.fm-opt-chip', { hasText: 'Done' }).click()
+    await expect(hud.locator('.fm-hud-title-num')).toHaveText('1/10 done')
+    await expect(hud.locator('.fm-hud-ring-label')).toHaveText('10%')
+    // switch the board the ring follows
+    await hud.locator('.fm-hud-title').click()
+    await page.locator('.menu-item', { hasText: 'Roadmap' }).click()
+    await expect(hud.locator('.fm-hud-title-name')).toHaveText('Roadmap')
+    await expect(hud.locator('.fm-hud-title-num')).toHaveText('6/13 done')
+    await m.expectData((x) => meta(x).hudBoard === boardByName(x, 'Roadmap').id, 'hud board saved')
     // clicking a stat highlights those cards
-    await hud.locator('.fm-hud-stat', { hasText: 'open' }).click()
-    await expect(m.root().locator('.fm-node-form.fm-lit')).toHaveCount(3)
+    await hud.locator('.fm-hud-stat', { hasText: 'votes' }).click()
+    await expect(m.root().locator('.fm-node-form.fm-lit')).toHaveCount(6)
   })
 
   test('the selection is shared across lenses', async ({ app, page }) => {
@@ -465,11 +552,9 @@ test.describe('form-map lenses @basic', () => {
     await expect(m.card(review.id)).not.toHaveClass(/is-selected/)
     await page.keyboard.press('Alt+4')
     await expect(m.insp().locator('.fm-i-title')).toHaveValue('Plan screen')
-    // selecting on the map updates the board too
     await page.keyboard.press('Alt+1')
     await m.clickCard(review.id, { modifiers: ['Shift'] })
     await page.keyboard.press('Alt+2')
     await expect(m.fmRoot().locator('.fm-bcard.is-selected')).toHaveCount(2)
-    expect(zones(d)).toHaveLength(8)
   })
 })

@@ -55,6 +55,11 @@ Measured separately: panning at 0.8 zoom, where full cards are mounted, runs at 
 cards. The "zoom" column of the original sweep (about 103 fps) spends half its frames clamped at the zoom limits, where
 nothing changes. The in-range sweep is the meaningful number.
 
+Form-map v2 (tags, field registry, groups, saved boards, kanban nodes; `bench/results/fm2.md`) re-measured on the same
+harness, with a v2 bench vault (groups, a field registry and a saved board): open 0.70–0.77 s, pan 1,017–1,082 fps
+(p95 ≤ 1.5 ms), zoom in range 621–668 fps, drag 11–16 ms per move, Map lens switch (warm) 10–27 ms, Board (warm)
+73–195 ms (it was 57–417 ms). These are within run-to-run noise of the numbers above.
+
 ## What was slow, and what changed
 
 Profiling (`bench/profile.mjs`, CPU profiles and DevTools timeline traces) showed that **none of the slowness was
@@ -97,15 +102,29 @@ JavaScript**. It was the browser's GPU raster:
   limit. It now reads 64 files at a time.
 - **Bug fixed: the file watcher blocked the main process for 15–44 s.** Chokidar created one native watcher per file.
   It is replaced on Windows and macOS by a single recursive `fs.watch` with the same events.
-- The Bible vault (32k notes, 141k links) is now **ready in about 4.8 s** with a warm OS file cache. That breaks down as
-  0.4 s for the window, 1.3 s to list files and 4.3 s to index links. **A cold first open measured 40–50 s on this
-  machine**, because Windows Defender scans every one of the 32k files the first time it is read; see suggestion 1.
+- **Persistent metadata cache** (`.cs2d3k/cache/metadata.json`, `lib/metaCache.ts`): parsed FileMeta per note, keyed
+  by path + mtime + size, plus each note's link resolution. On open only new or changed notes are read; stored
+  resolutions are reused unless a file with a matching name was added or removed. Versioned by `PARSER_VERSION`
+  (`lib/mdparse.ts`); a missing or corrupt cache just means a full index.
+- **Streamed indexing:** notes are read in batches (`fs.readMany`, several in flight) and parsed in 10 ms time slices
+  with progress for the loading screen; links are resolved per batch, so there is no separate linking pass.
+- **Faster listing:** stats run synchronously in worker threads (`main/statMany.ts`), about 0.8 s instead of 1.3–2 s
+  for 33k entries. The main process starts listing the last vault and reading its cache before the window exists.
+
+Time until the app is usable (`node bench/startup.mjs --vault <dir> [--no-cache]`, includes the 0.4 s window):
+
+| Vault | Before: warm / cold | First open (no cache): warm / cold | Re-open with cache: warm / never-read files |
+|---|---|---|---|
+| Bible verses, 340k cross-refs (32k notes) | 6.5 s / 46.5 s | 3.9–4.2 s / 46 s | **1.4–1.7 s / 1.9 s** |
+| Bible verses, 78k cross-refs (32k notes) | 5.1 s / 46.5 s | 3.2–3.4 s / 49 s | **1.4–1.7 s** |
+| Synthetic 10k notes | 1.8 s / 15 s | 1.4–1.5 s / 15.5 s | **0.7–1.0 s** |
+
+"Cold" is dominated by Windows Defender scanning every file on its first read; with the cache, no note is read.
 
 ## Recommended next optimizations and enhancements
 
-1. **Persistent metadata cache.** Store parsed links, tags and headings in `.cs2d3k/cache` keyed by path, mtime and
-   size. Startup would then only `stat` files and re-parse the ones that changed. This removes the cold-start cost on
-   huge vaults (expected about 2 s for the Bible, cold or warm) and is the single biggest remaining win.
+1. ~~Persistent metadata cache~~ (done, see above). Remaining: the cache is written ~1 s after indexing, so quitting
+   within that second means the next start indexes again.
 2. **Faster layout for huge graphs.** Split the many-body force across 2–3 workers or move it to WASM (SIMD), roughly
    halving the Bible's 6–7 s settle. Optionally save the settled layout per vault so re-opening the graph is instant.
 3. **Label collision avoidance.** Labels can still overlap in dense areas. A screen-space greedy placement on the label

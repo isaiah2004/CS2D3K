@@ -1,0 +1,443 @@
+{
+	"formmap": {
+		"version": 2,
+		"title": "Sprint board",
+		"template": "kanban",
+		"hudBoard": "032634f087e51b42",
+		"fields": {
+			"Owner": {
+				"type": "text"
+			},
+			"Priority": {
+				"type": "select",
+				"options": [
+					{
+						"value": "High",
+						"color": "red"
+					},
+					{
+						"value": "Medium",
+						"color": "orange"
+					},
+					{
+						"value": "Low",
+						"color": "gray"
+					}
+				]
+			},
+			"Estimate": {
+				"type": "number",
+				"label": "Estimate (days)"
+			},
+			"Checklist": {
+				"type": "checklist"
+			},
+			"done": {
+				"type": "checkbox",
+				"label": "Done"
+			}
+		},
+		"tags": {
+			"task": {
+				"color": "green"
+			},
+			"bug": {
+				"color": "red"
+			},
+			"ux": {
+				"color": "cyan"
+			},
+			"design": {
+				"color": "purple"
+			},
+			"idea": {
+				"color": "yellow"
+			}
+		},
+		"presets": [
+			{
+				"id": "task",
+				"name": "Task",
+				"emoji": "✅",
+				"tags": [
+					"task"
+				]
+			},
+			{
+				"id": "bug",
+				"name": "Bug",
+				"emoji": "🐞",
+				"tags": [
+					"bug"
+				],
+				"fields": {
+					"Priority": "High"
+				}
+			}
+		],
+		"boards": [
+			{
+				"id": "032634f087e51b42",
+				"name": "Sprint 12",
+				"source": {
+					"mode": "groups",
+					"groupIds": [
+						"9aad80b891baf90d",
+						"0d3bf16295d06910",
+						"bf3f5fb85967f532",
+						"f3ab3cc2d0b698d5"
+					]
+				},
+				"wip": {
+					"0d3bf16295d06910": 3
+				}
+			},
+			{
+				"id": "9fe8110102c995f1",
+				"name": "Sprint by priority",
+				"source": {
+					"mode": "field",
+					"field": "Priority",
+					"groupId": "2c376631129f3436"
+				}
+			}
+		]
+	},
+	"nodes": [
+		{
+			"id": "2c376631129f3436",
+			"type": "group",
+			"label": "Sprint 12",
+			"emoji": "🏃",
+			"prompt": "Two weeks. Ship the onboarding revamp.",
+			"x": -40,
+			"y": -80,
+			"width": 1480,
+			"height": 860,
+			"color": "5"
+		},
+		{
+			"id": "9aad80b891baf90d",
+			"type": "group",
+			"label": "To do",
+			"emoji": "📝",
+			"x": 0,
+			"y": 0,
+			"width": 320,
+			"height": 740,
+			"color": "2",
+			"preset": "task"
+		},
+		{
+			"id": "0d3bf16295d06910",
+			"type": "group",
+			"label": "Doing",
+			"emoji": "⚡",
+			"x": 360,
+			"y": 0,
+			"width": 320,
+			"height": 740,
+			"color": "5",
+			"preset": "task"
+		},
+		{
+			"id": "bf3f5fb85967f532",
+			"type": "group",
+			"label": "Review",
+			"emoji": "👀",
+			"x": 720,
+			"y": 0,
+			"width": 320,
+			"height": 740,
+			"color": "6",
+			"preset": "task"
+		},
+		{
+			"id": "f3ab3cc2d0b698d5",
+			"type": "group",
+			"label": "Done",
+			"emoji": "✅",
+			"x": 1080,
+			"y": 0,
+			"width": 320,
+			"height": 740,
+			"color": "4",
+			"preset": "task",
+			"assign": {
+				"done": true
+			}
+		},
+		{
+			"id": "c7e41ba4ea5ee874",
+			"type": "form",
+			"title": "Welcome tour",
+			"text": "Three steps, skippable, remembers where you left off.",
+			"tags": [
+				"task",
+				"ux"
+			],
+			"fields": {
+				"Owner": "Ana",
+				"Priority": "High",
+				"Estimate": 3
+			},
+			"x": 24,
+			"y": 40,
+			"width": 272,
+			"height": 130,
+			"votes": 2
+		},
+		{
+			"id": "ae7689447ab57a68",
+			"type": "form",
+			"title": "Sample vault picker",
+			"text": "Offer the sample vault on first launch.",
+			"tags": [
+				"task"
+			],
+			"fields": {
+				"Owner": "Ben",
+				"Priority": "Medium",
+				"Estimate": 2
+			},
+			"x": 24,
+			"y": 190,
+			"width": 272,
+			"height": 130
+		},
+		{
+			"id": "3536c4499d863386",
+			"type": "form",
+			"title": "Empty-state illustrations",
+			"text": "",
+			"tags": [
+				"design"
+			],
+			"fields": {
+				"Priority": "Low",
+				"Estimate": 1
+			},
+			"x": 24,
+			"y": 340,
+			"width": 272,
+			"height": 130
+		},
+		{
+			"id": "ce10cd79e048c07d",
+			"type": "form",
+			"title": "Keyboard cheat sheet",
+			"text": "Opens with ?, searchable.",
+			"tags": [
+				"task",
+				"ux"
+			],
+			"fields": {
+				"Owner": "Cleo",
+				"Priority": "High",
+				"Estimate": 2,
+				"Checklist": [
+					{
+						"text": "List shortcuts",
+						"done": true
+					},
+					{
+						"text": "Search box",
+						"done": false
+					}
+				]
+			},
+			"x": 384,
+			"y": 40,
+			"width": 272,
+			"height": 130
+		},
+		{
+			"id": "d7753eda83d7c58d",
+			"type": "form",
+			"title": "Crash on empty vault",
+			"text": "Opening an empty folder throws.",
+			"tags": [
+				"bug"
+			],
+			"fields": {
+				"Owner": "Ben",
+				"Priority": "High",
+				"Estimate": 1
+			},
+			"x": 384,
+			"y": 190,
+			"width": 272,
+			"height": 130,
+			"votes": 3
+		},
+		{
+			"id": "fe0d5a0cf318656b",
+			"type": "form",
+			"title": "Theme picker preview",
+			"text": "Live preview of each theme.",
+			"tags": [
+				"task",
+				"design"
+			],
+			"fields": {
+				"Owner": "Ana",
+				"Priority": "Medium",
+				"Estimate": 3
+			},
+			"x": 744,
+			"y": 40,
+			"width": 272,
+			"height": 130
+		},
+		{
+			"id": "3e6f0bade65c3b18",
+			"type": "form",
+			"title": "Faster first launch",
+			"text": "Cache the vault index.",
+			"tags": [
+				"task"
+			],
+			"fields": {
+				"Owner": "Cleo",
+				"Priority": "High",
+				"Estimate": 5,
+				"done": true
+			},
+			"x": 1104,
+			"y": 40,
+			"width": 272,
+			"height": 130
+		},
+		{
+			"id": "78c8d5f08b79affd",
+			"type": "group",
+			"label": "Backlog",
+			"emoji": "📦",
+			"prompt": "Not this sprint. Drag into “To do” when it's time.",
+			"x": -40,
+			"y": 860,
+			"width": 760,
+			"height": 420,
+			"color": "3",
+			"preset": "task"
+		},
+		{
+			"id": "2b49c12a4b006298",
+			"type": "form",
+			"title": "Plugin API sketch",
+			"text": "What would a minimal plugin API look like?",
+			"tags": [
+				"idea"
+			],
+			"fields": {
+				"Priority": "Low"
+			},
+			"x": 24,
+			"y": 940,
+			"width": 272,
+			"height": 130
+		},
+		{
+			"id": "3475eb46c5296f62",
+			"type": "form",
+			"title": "Sync across devices",
+			"text": "",
+			"tags": [
+				"idea"
+			],
+			"fields": {
+				"Priority": "Medium"
+			},
+			"x": 384,
+			"y": 940,
+			"width": 272,
+			"height": 130,
+			"votes": 4
+		},
+		{
+			"id": "e338d74ff1fe4f7f",
+			"type": "kanban",
+			"title": "Bug triage",
+			"x": 820,
+			"y": 900,
+			"width": 820,
+			"height": 380,
+			"columns": [
+				{
+					"id": "505aef9ebdd25b00",
+					"title": "New",
+					"color": "orange",
+					"cards": [
+						{
+							"id": "1a3ff416d4a3baf6",
+							"title": "Tab title flickers on rename",
+							"tags": [
+								"bug"
+							],
+							"fields": {
+								"Priority": "Low"
+							}
+						},
+						{
+							"id": "9dad8199bfca8b6f",
+							"title": "Graph labels overlap",
+							"text": "Dense areas at 0.3× zoom.",
+							"tags": [
+								"bug"
+							]
+						}
+					]
+				},
+				{
+					"id": "3a6a9421cc1c9301",
+					"title": "Confirmed",
+					"color": "blue",
+					"cards": [
+						{
+							"id": "6f1c4261e5351d30",
+							"title": "Paste loses formatting",
+							"tags": [
+								"bug"
+							],
+							"fields": {
+								"Priority": "High",
+								"Owner": "Ben"
+							}
+						}
+					]
+				},
+				{
+					"id": "b49895d1a0d1f13d",
+					"title": "Fixed",
+					"color": "green",
+					"cards": [
+						{
+							"id": "ce20c4fd32f640d0",
+							"title": "Undo after drag",
+							"tags": [
+								"bug"
+							],
+							"done": true
+						}
+					]
+				}
+			]
+		}
+	],
+	"edges": [
+		{
+			"id": "8cc102ddb8379c7c",
+			"fromNode": "c7e41ba4ea5ee874",
+			"toNode": "ae7689447ab57a68",
+			"relation": "depends",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "e65426f74bde94fb",
+			"fromNode": "fe0d5a0cf318656b",
+			"toNode": "3536c4499d863386",
+			"relation": "relates",
+			"toEnd": "arrow"
+		}
+	]
+}

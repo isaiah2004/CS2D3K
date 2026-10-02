@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test'
 import { CanvasPage, center } from './helpers/canvas'
 import { FormMapPage, type Lens } from './helpers/formmap'
 
-const KINDS = ['idea', 'principle', 'goal', 'approach', 'feature', 'question', 'note']
+const TAGS = ['idea', 'principle', 'goal', 'approach', 'feature', 'question', 'note']
 
 /** deterministic pseudo-random numbers */
 function rng(seed: number): () => number {
@@ -31,17 +31,25 @@ function bigCanvas(nodes: number, edges: number): string {
 }
 
 function bigFormMap(cards: number): string {
-  const zones = KINDS.map((k, i) => ({ id: `z${i}`, type: 'zone', label: `Zone ${k}`, emoji: '✨', x: i * 2100, y: 0, width: 2000, height: 2600, defaultKind: k, order: i + 1, locked: true }))
+  const groups = TAGS.map((t, i) => ({ id: `z${i}`, type: 'group', label: `Group ${t}`, emoji: '✨', x: i * 2100, y: 0, width: 2000, height: 2600, preset: t, order: i + 1, locked: true }))
   const forms = Array.from({ length: cards }, (_, i) => {
-    const kind = KINDS[i % KINDS.length]
-    const zi = i % KINDS.length
-    const j = Math.floor(i / KINDS.length)
+    const tag = TAGS[i % TAGS.length]
+    const zi = i % TAGS.length
+    const j = Math.floor(i / TAGS.length)
     const fields: Record<string, unknown> =
-      kind === 'feature' ? { phase: ['mvp', 'later', 'next'][j % 3], priority: 'should', effort: 'm', status: 'planned', fun: (j % 5) + 1 } : kind === 'question' ? { status: 'open' } : kind === 'idea' ? { status: 'raw' } : {}
-    return { id: `f${i}`, type: 'form', kind, title: `${kind} card ${i}`, text: `Details for card ${i} with **markdown**`, fields, votes: i % 4, x: zi * 2100 + 40 + (j % 6) * 320, y: 80 + Math.floor(j / 6) * 220, width: 280, height: 180 }
+      tag === 'feature' ? { phase: ['mvp', 'later', 'next'][j % 3], priority: 'should', effort: 'm', status: 'planned', fun: (j % 5) + 1 } : tag === 'question' ? { status: 'open' } : tag === 'idea' ? { status: 'raw' } : {}
+    return { id: `f${i}`, type: 'form', title: `${tag} card ${i}`, text: `Details for card ${i} with **markdown**`, tags: [tag], fields, votes: i % 4, x: zi * 2100 + 40 + (j % 6) * 320, y: 80 + Math.floor(j / 6) * 220, width: 280, height: 180 }
   })
   const edges = Array.from({ length: Math.floor(cards / 2) }, (_, i) => ({ id: `r${i}`, fromNode: `f${i * 2}`, toNode: `f${(i * 2 + 9) % cards}`, relation: 'relates' }))
-  return JSON.stringify({ formmap: { version: 1, title: 'Big map', mvpBudget: 40 }, nodes: [...zones, ...forms], edges }, null, '\t')
+  const sel = (values: string[]) => ({ type: 'select', options: values.map((value) => ({ value })) })
+  const formmap = {
+    version: 2,
+    title: 'Big map',
+    fields: { phase: sel(['mvp', 'next', 'later']), priority: sel(['must', 'should']), effort: sel(['s', 'm', 'l']), status: sel(['raw', 'open', 'planned', 'done']), fun: { type: 'rating', max: 5 } },
+    tags: Object.fromEntries(TAGS.map((t) => [t, { color: 'blue' }])),
+    boards: [{ id: 'b1', name: 'All groups', source: { mode: 'groups', groupIds: groups.map((g) => g.id) } }]
+  }
+  return JSON.stringify({ formmap, nodes: [...groups, ...forms], edges }, null, '\t')
 }
 
 /** records requestAnimationFrame gaps while `fn` runs; returns the frame gaps in ms */
@@ -135,7 +143,7 @@ test.describe('form-map performance @perf', () => {
       Map: mapReady,
       Board: () => expect(m.fmRoot().locator('.fm-board .fm-col').first()).toBeVisible(),
       Table: () => expect(m.fmRoot().locator('.fm-table tbody tr')).toHaveCount(300),
-      Doc: () => expect(m.fmRoot().locator('.fm-doc-md h2').last()).toHaveText('Idea inbox')
+      Doc: () => expect(m.fmRoot().locator('.fm-doc-md h2').last()).toHaveText('✨ Group note')
     }
     const times: string[] = []
     // twice: the first switch also loads the lens chunk
@@ -148,9 +156,8 @@ test.describe('form-map performance @perf', () => {
         times.push(`${lens}#${round} ${ms}ms`)
         expect(ms, `${lens} lens (round ${round})`).toBeLessThan(1000)
       }
-    // the board shows every card once grouped by kind
+    // the saved board over the groups shows every card once
     await m.lensButton('Board').click()
-    await m.fmRoot().locator('.fm-seg button', { hasText: 'Kind' }).click()
     await expect(m.fmRoot().locator('.fm-bcard')).toHaveCount(300)
     testInfo.annotations.push({ type: 'perf', description: times.join(' · ') })
     console.log(`[perf] form-map 300 lens switches: ${times.join(', ')}`)

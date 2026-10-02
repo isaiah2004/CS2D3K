@@ -1,45 +1,59 @@
-// Table lens: one row per form card, kind filter tabs, sortable columns, inline editing.
+// Table lens: one row per card; the columns are the field registry. Filter by group and tags, sort any column,
+// edit inline.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, MapPin, Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, MapPin, Plus, Trash2, Filter, X } from 'lucide-react'
 import type { FormMapCtl, LensProps } from '../context'
-import { cardTitle, fieldDef, forms, KIND_ORDER, KINDS, type ChecklistItem, type FieldDef, type FormKind, type FormNode } from '../schema'
-import { addCard, deleteNodes, moveToZone, setField, setKind, vote, zoneIndex, zonesInOrder } from './ops'
-import { fieldText, KindChip, OptionChip, openOptionMenu, Stars } from './widgets'
+import {
+  cardTitle,
+  fieldLabel,
+  fieldText,
+  forms,
+  groupIn,
+  groups,
+  groupTitle,
+  isEmptyValue,
+  optionOf,
+  type ChecklistItem,
+  type FieldDef,
+  type FormNode,
+  type GroupNode
+} from '../schema'
+import { addCard, deleteNodes, groupsInOrder, moveToGroup, setField, setTags, vote } from './ops'
+import { OptionChip, openOptionMenu, Stars, TagChip, tagMenuItems, TypeIcon } from './widgets'
 import { useWorkspace } from '@/store/workspace'
 import { showContextMenu, type MenuItem } from '@/store/ui'
 import './lenses.css'
+import './board.css'
 
-type KindFilter = 'all' | FormKind
 interface SortState {
   key: string
   dir: 1 | -1
 }
 interface TableState {
-  kind: KindFilter
+  /** group id, '__none' (outside groups) or null (all) */
+  group: string | null
+  tags: string[]
   sort: SortState | null
 }
 
 interface Col {
   key: string
   label: string
-  /** field columns: the first definition (rows use their own kind's definition) */
   field?: FieldDef
   className?: string
 }
 
-const BASE_COLS: Col[] = [
-  { key: '@kind', label: 'Kind', className: 'is-kind' },
-  { key: '@title', label: 'Title', className: 'is-title' }
-]
+const NO_GROUP = '__none'
+const BASE_COLS: Col[] = [{ key: '@title', label: 'Title', className: 'is-title' }, { key: '@tags', label: 'Tags', className: 'is-tags' }]
 const TAIL_COLS: Col[] = [
-  { key: '@zone', label: 'Zone', className: 'is-zone' },
+  { key: '@group', label: 'Group', className: 'is-zone' },
   { key: '@votes', label: 'Votes', className: 'is-num' },
   { key: '@rels', label: 'Links', className: 'is-num' }
 ]
 
 function readState(ctl: FormMapCtl): TableState {
   const s = (ctl.tab.state?.table ?? {}) as Partial<TableState>
-  return { kind: s.kind === 'all' || (s.kind && s.kind in KINDS) ? s.kind : 'all', sort: s.sort ?? null }
+  return { group: typeof s.group === 'string' ? s.group : null, tags: Array.isArray(s.tags) ? s.tags.filter((t) => typeof t === 'string') : [], sort: s.sort ?? null }
 }
 
 export default function TableLens({ ctl }: LensProps) {
@@ -50,18 +64,17 @@ export default function TableLens({ ctl }: LensProps) {
     useWorkspace.getState().updateTabState(ctl.tab.id, { table: next })
   }
   const [editing, setEditing] = useState<{ id: string; key: string } | null>(null)
+  const meta = ctl.meta
+  const reg = meta.fields ?? {}
 
   const all = useMemo(() => forms(ctl.data), [ctl.data])
-  const counts = useMemo(() => {
-    const m = new Map<KindFilter, number>([['all', all.length]])
-    for (const f of all) m.set(f.kind, (m.get(f.kind) ?? 0) + 1)
+  const gs = useMemo(() => groupsInOrder(ctl.data), [ctl.data])
+  const groupOf = useMemo(() => {
+    const list = groups(ctl.data)
+    const m = new Map<string, GroupNode | null>()
+    for (const f of all) m.set(f.id, groupIn(list, f))
     return m
-  }, [all])
-  const zoneOf = useMemo(() => {
-    const idx = zoneIndex(ctl.data)
-    const byId = new Map(zonesInOrder(ctl.data).map((z) => [z.id, z]))
-    return (id: string) => byId.get(idx.get(id) ?? '') ?? null
-  }, [ctl.data])
+  }, [ctl.data, all])
   const relCount = useMemo(() => {
     const m = new Map<string, number>()
     for (const e of ctl.data.edges) {
@@ -71,48 +84,42 @@ export default function TableLens({ ctl }: LensProps) {
     return m
   }, [ctl.data])
 
-  const cols = useMemo<Col[]>(() => {
-    const kinds = st.kind === 'all' ? KIND_ORDER : [st.kind]
-    const seen = new Map<string, FieldDef>()
-    for (const k of kinds)
-      for (const f of KINDS[k].fields) {
-        // "All" shows the on-card fields only, so the table stays scannable
-        if (st.kind === 'all' && !f.onCard) continue
-        if (!seen.has(f.key)) seen.set(f.key, f)
-      }
-    return [...BASE_COLS, ...[...seen.values()].map((f) => ({ key: f.key, label: f.label, field: f, className: `is-${f.type}` })), ...TAIL_COLS]
-  }, [st.kind])
+  const cols = useMemo<Col[]>(() => [...BASE_COLS, ...Object.entries(reg).map(([k, f]) => ({ key: k, label: fieldLabel(k, f), field: f, className: `is-${f.type}` })), ...TAIL_COLS], [reg])
 
   const sortValue = (f: FormNode, key: string): string | number => {
     switch (key) {
-      case '@kind':
-        return KIND_ORDER.indexOf(f.kind)
       case '@title':
         return cardTitle(f).toLowerCase()
-      case '@zone':
-        return zoneOf(f.id)?.label?.toLowerCase() ?? '￿'
+      case '@tags':
+        return (f.tags ?? []).join(' ').toLowerCase() || '￿'
+      case '@group':
+        return groupOf.get(f.id)?.label?.toLowerCase() ?? '￿'
       case '@votes':
         return f.votes ?? 0
       case '@rels':
         return relCount.get(f.id) ?? 0
     }
-    const def = fieldDef(f.kind, key)
+    const def = reg[key]
     const v = f.fields[key]
-    if (!def || v === undefined || v === '') return '￿'
-    if (def.type === 'select') {
+    if (isEmptyValue(v)) return '￿'
+    if (def?.type === 'select') {
       const i = def.options?.findIndex((o) => o.value === v) ?? -1
       return i < 0 ? 999 : i
     }
-    if (def.type === 'rating' || def.type === 'number') return Number(v) || 0
-    if (def.type === 'checklist') return Array.isArray(v) ? v.length : 0
-    if (def.type === 'checkbox') return v ? 0 : 1
-    return String(v).toLowerCase()
+    if (def?.type === 'rating' || def?.type === 'number') return Number(v) || 0
+    if (def?.type === 'checklist') return Array.isArray(v) ? v.length : 0
+    if (def?.type === 'checkbox') return v ? 0 : 1
+    return fieldText(def, v).toLowerCase()
   }
 
   const rows = useMemo(() => {
-    const list = all.filter((f) => st.kind === 'all' || f.kind === st.kind)
+    const list = all.filter((f) => {
+      if (st.group === NO_GROUP && groupOf.get(f.id)) return false
+      if (st.group && st.group !== NO_GROUP && groupOf.get(f.id)?.id !== st.group) return false
+      return st.tags.every((t) => f.tags?.includes(t))
+    })
     const s = st.sort
-    if (!s) return list.sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || a.y - b.y || a.x - b.x)
+    if (!s) return list.sort((a, b) => a.y - b.y || a.x - b.x)
     return list.sort((a, b) => {
       const va = sortValue(a, s.key)
       const vb = sortValue(b, s.key)
@@ -120,12 +127,12 @@ export default function TableLens({ ctl }: LensProps) {
       return c * s.dir || a.y - b.y
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [all, st, zoneOf, relCount])
+  }, [all, st, groupOf, relCount, reg])
 
   const toggleSort = (key: string): void => {
     const s = st.sort
     // numbers/votes/ratings read best biggest-first
-    const firstDir: 1 | -1 = key === '@votes' || key === '@rels' || cols.find((c) => c.key === key)?.field?.type === 'rating' ? -1 : 1
+    const firstDir: 1 | -1 = key === '@votes' || key === '@rels' || reg[key]?.type === 'rating' || reg[key]?.type === 'number' ? -1 : 1
     if (!s || s.key !== key) update({ sort: { key, dir: firstDir } })
     else if (s.dir === firstDir) update({ sort: { key, dir: (firstDir * -1) as 1 | -1 } })
     else update({ sort: null })
@@ -177,17 +184,10 @@ export default function TableLens({ ctl }: LensProps) {
     }
   }
 
-  const addRow = (e: React.MouseEvent): void => {
-    const create = (k: FormKind): void => {
-      const id = addCard(ctl, k)
-      ctl.setSelection([id])
-      setEditing({ id, key: '@title' })
-    }
-    if (st.kind !== 'all') return create(st.kind)
-    showContextMenu(
-      e,
-      KIND_ORDER.map((k) => ({ label: `${KINDS[k].emoji}  ${KINDS[k].label}`, hint: KINDS[k].hint, onClick: () => create(k) }))
-    )
+  const addRow = (): void => {
+    const id = addCard(ctl, { tags: st.tags, groupId: st.group === NO_GROUP ? null : (st.group ?? null) })
+    ctl.setSelection([id])
+    setEditing({ id, key: '@title' })
   }
 
   const rowMenu = (e: React.MouseEvent, f: FormNode): void => {
@@ -204,22 +204,45 @@ export default function TableLens({ ctl }: LensProps) {
     showContextMenu(e, items)
   }
 
+  const tagFilterMenu = (e: React.MouseEvent): void => {
+    const known = Object.keys(meta.tags ?? {}).sort((a, b) => a.localeCompare(b))
+    showContextMenu(e, known.length ? known.map((t) => ({ label: `#${t}`, checked: st.tags.includes(t), onClick: () => update({ tags: st.tags.includes(t) ? st.tags.filter((x) => x !== t) : [...st.tags, t] }) })) : [{ label: 'No tags on this map yet', disabled: true }])
+  }
+
   const dim = (f: FormNode): boolean => !!ctl.highlight && !ctl.highlight.includes(f.id) && !selected.has(f.id)
+  const filtered = st.group !== null || st.tags.length > 0
 
   return (
     <div className="fm-table-lens">
       <div className="fm-lens-toolbar">
-        <div className="fm-tabs" role="tablist" aria-label="Kind filter">
-          {(['all', ...KIND_ORDER] as KindFilter[]).map((k) => (
-            <button key={k} role="tab" aria-selected={st.kind === k} className={`fm-tab${st.kind === k ? ' is-active' : ''}`} onClick={() => update({ kind: k, sort: st.kind === k ? st.sort : null })}>
-              {k === 'all' ? 'All' : `${KINDS[k].emoji} ${KINDS[k].plural}`}
-              <span className="fm-tab-count">{counts.get(k) ?? 0}</span>
-            </button>
+        <span className="fm-toolbar-label">Group</span>
+        <select className="dropdown fm-table-group" value={st.group ?? ''} onChange={(e) => update({ group: e.target.value || null })} aria-label="Group filter">
+          <option value="">All cards ({all.length})</option>
+          {gs.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.emoji ? `${g.emoji} ` : ''}
+              {groupTitle(g)}
+            </option>
           ))}
-        </div>
+          <option value={NO_GROUP}>Outside groups</option>
+        </select>
+        <button className={`btn fm-board-filter${st.tags.length ? ' is-active' : ''}`} onClick={tagFilterMenu} title="Only cards with all these tags">
+          <Filter size={13} /> Tags
+        </button>
+        {st.tags.map((t) => (
+          <TagChip key={t} tag={t} meta={meta} compact onRemove={() => update({ tags: st.tags.filter((x) => x !== t) })} />
+        ))}
+        {filtered && (
+          <button className="fm-i-textbtn" onClick={() => update({ group: null, tags: [] })}>
+            <X size={12} /> Clear
+          </button>
+        )}
         <span className="fm-toolbar-spacer" />
+        <span className="fm-toolbar-count">
+          {rows.length} of {all.length}
+        </span>
         <button className="btn fm-table-add" onClick={addRow}>
-          <Plus size={14} /> New {st.kind === 'all' ? 'card' : KINDS[st.kind].label.toLowerCase()}
+          <Plus size={14} /> New card
         </button>
       </div>
       <div className="fm-table-wrap" ref={wrapRef} tabIndex={0} onKeyDown={onKey}>
@@ -229,6 +252,7 @@ export default function TableLens({ ctl }: LensProps) {
               {cols.map((c) => (
                 <th key={c.key} className={c.className} onClick={() => toggleSort(c.key)} aria-sort={st.sort?.key === c.key ? (st.sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
                   <span className="fm-th">
+                    {c.field && <TypeIcon type={c.field.type} />}
                     {c.label}
                     {st.sort?.key === c.key && (st.sort.dir === 1 ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
                   </span>
@@ -238,16 +262,10 @@ export default function TableLens({ ctl }: LensProps) {
           </thead>
           <tbody>
             {rows.map((f) => (
-              <tr
-                key={f.id}
-                data-row={f.id}
-                className={`${selected.has(f.id) ? 'is-selected' : ''}${dim(f) ? ' is-dim' : ''}`}
-                onClick={(e) => onRowClick(e, f.id)}
-                onContextMenu={(e) => rowMenu(e, f)}
-              >
+              <tr key={f.id} data-row={f.id} className={`${selected.has(f.id) ? 'is-selected' : ''}${dim(f) ? ' is-dim' : ''}`} onClick={(e) => onRowClick(e, f.id)} onContextMenu={(e) => rowMenu(e, f)}>
                 {cols.map((c) => (
                   <td key={c.key} className={c.className}>
-                    <Cell ctl={ctl} f={f} col={c} zone={zoneOf(f.id)?.label} zoneEmoji={zoneOf(f.id)?.emoji} rels={relCount.get(f.id) ?? 0} editing={editing?.id === f.id && editing.key === c.key} setEditing={(on) => setEditing(on ? { id: f.id, key: c.key } : null)} />
+                    <Cell ctl={ctl} f={f} col={c} group={groupOf.get(f.id) ?? null} rels={relCount.get(f.id) ?? 0} editing={editing?.id === f.id && editing.key === c.key} setEditing={(on) => setEditing(on ? { id: f.id, key: c.key } : null)} />
                   </td>
                 ))}
               </tr>
@@ -256,8 +274,8 @@ export default function TableLens({ ctl }: LensProps) {
         </table>
         {!rows.length && (
           <div className="fm-table-empty">
-            <div className="fm-col-empty-emoji">{st.kind === 'all' ? '🗂️' : KINDS[st.kind].emoji}</div>
-            No {st.kind === 'all' ? 'cards' : KINDS[st.kind].plural.toLowerCase()} yet.
+            <div className="fm-col-empty-emoji">🗂️</div>
+            {filtered ? 'No cards match the filter.' : 'No cards yet.'}
           </div>
         )}
         <button className="fm-table-addrow" onClick={addRow}>
@@ -272,41 +290,25 @@ export default function TableLens({ ctl }: LensProps) {
 
 /** click handler that doesn't also select/toggle the row */
 const stop =
-  (fn: () => void) =>
+  (fn: (e: React.MouseEvent) => void) =>
   (e: React.MouseEvent): void => {
     e.stopPropagation()
-    fn()
+    fn(e)
   }
 
 interface CellProps {
   ctl: FormMapCtl
   f: FormNode
   col: Col
-  zone?: string
-  zoneEmoji?: string
+  group: GroupNode | null
   rels: number
   editing: boolean
   setEditing: (on: boolean) => void
 }
 
-function Cell({ ctl, f, col, zone, zoneEmoji, rels, editing, setEditing }: CellProps) {
+function Cell({ ctl, f, col, group, rels, editing, setEditing }: CellProps) {
+  const meta = ctl.meta
   switch (col.key) {
-    case '@kind':
-      return (
-        <button
-          className="fm-cell-kind"
-          title="Change kind"
-          onClick={(e) => {
-            e.stopPropagation()
-            showContextMenu(
-              e,
-              KIND_ORDER.map((k) => ({ label: `${KINDS[k].emoji}  ${KINDS[k].label}`, checked: k === f.kind, onClick: () => setKind(ctl, f.id, k) }))
-            )
-          }}
-        >
-          <KindChip kind={f.kind} />
-        </button>
-      )
     case '@title':
       return editing ? (
         <InlineEditor
@@ -323,31 +325,33 @@ function Cell({ ctl, f, col, zone, zoneEmoji, rels, editing, setEditing }: CellP
           <button
             className="clickable-icon small fm-row-reveal"
             title="Reveal in map"
-            onClick={(e) => {
-              e.stopPropagation()
-              ctl.reveal([f.id], { select: true })
-            }}
+            onClick={stop(() => ctl.reveal([f.id], { select: true }))}
           >
             <MapPin />
           </button>
         </div>
       )
-    case '@zone':
+    case '@tags':
+      return (
+        <button className="fm-cell-tags" title="Edit tags" onClick={stop((e) => showContextMenu(e, tagMenuItems(meta, f.tags ?? [], (t) => setTags(ctl, f.id, f.tags?.includes(t) ? { remove: [t] } : { add: [t] }))))}>
+          {f.tags?.length ? f.tags.map((t) => <TagChip key={t} tag={t} meta={meta} compact />) : <span className="is-placeholder">+ tag</span>}
+        </button>
+      )
+    case '@group':
       return (
         <button
           className="fm-cell-zone"
-          title="Move to zone"
-          onClick={(e) => {
-            e.stopPropagation()
-            const zs = zonesInOrder(ctl.data)
+          title="Move to group"
+          onClick={stop((e) => {
+            const gs = groupsInOrder(ctl.data)
             showContextMenu(e, [
-              ...zs.map((z) => ({ label: `${z.emoji ?? '▢'}  ${z.label}`, checked: z.label === zone, onClick: () => moveToZone(ctl, f.id, z.id) })),
+              ...gs.map((g) => ({ label: `${g.emoji ?? '▢'}  ${groupTitle(g)}`, checked: g.id === group?.id, onClick: () => moveToGroup(ctl, f.id, g.id, e) })),
               { separator: true },
-              { label: 'Outside zones', checked: !zone, onClick: () => moveToZone(ctl, f.id, null) }
+              { label: 'Outside groups', checked: !group, onClick: () => moveToGroup(ctl, f.id, null) }
             ])
-          }}
+          })}
         >
-          {zone ? `${zoneEmoji ?? ''} ${zone}` : <span className="is-placeholder">—</span>}
+          {group ? `${group.emoji ?? ''} ${groupTitle(group)}` : <span className="is-placeholder">—</span>}
         </button>
       )
     case '@votes':
@@ -365,19 +369,40 @@ function Cell({ ctl, f, col, zone, zoneEmoji, rels, editing, setEditing }: CellP
     case '@rels':
       return <span className={rels ? '' : 'is-placeholder'}>{rels}</span>
   }
-  const def = fieldDef(f.kind, col.key)
-  if (!def) return <span className="fm-cell-na" />
-  const v = f.fields[col.key]
-  const set = (nv: unknown, e?: React.MouseEvent): void => setField(ctl, f.id, def.key, nv, e)
-  switch (def.type) {
+  const def = col.field
+  const key = col.key
+  const v = f.fields[key]
+  const set = (nv: unknown, e?: React.MouseEvent): void => setField(ctl, f.id, key, nv, e)
+  switch (def?.type) {
     case 'select': {
-      const o = def.options?.find((x) => x.value === v)
+      const o = optionOf(def, v)
       const open = (e: React.MouseEvent): void => {
         e.stopPropagation()
-        openOptionMenu(e, def, v, (nv, ev) => set(nv, ev))
+        openOptionMenu(e, def, v, f.tags, (nv, ev) => set(nv, ev))
       }
       return o ? (
-        <OptionChip option={o} compact onClick={open} title={`${def.label}: click to change`} />
+        <OptionChip option={o} compact onClick={open} title={`${col.label}: click to change`} />
+      ) : (
+        <button className="fm-cell-empty" onClick={open}>
+          {isEmptyValue(v) ? 'Set…' : String(v)}
+        </button>
+      )
+    }
+    case 'multiselect': {
+      const list = Array.isArray(v) ? v : isEmptyValue(v) ? [] : [v]
+      const open = (e: React.MouseEvent): void => {
+        e.stopPropagation()
+        showContextMenu(
+          e,
+          (def.options ?? []).map((o) => ({ label: o.label ?? o.value, checked: list.includes(o.value), onClick: () => set(list.includes(o.value) ? list.filter((x) => x !== o.value) : [...list, o.value], e) }))
+        )
+      }
+      return list.length ? (
+        <button className="fm-cell-multi" onClick={open}>
+          {list.map((x) => (
+            <OptionChip key={String(x)} option={optionOf(def, x) ?? { value: String(x) }} compact />
+          ))}
+        </button>
       ) : (
         <button className="fm-cell-empty" onClick={open}>
           Set…
@@ -387,7 +412,7 @@ function Cell({ ctl, f, col, zone, zoneEmoji, rels, editing, setEditing }: CellP
     case 'rating':
       return <Stars value={Number(v) || 0} max={def.max ?? 5} size={13} onChange={(n, e) => set(n || undefined, e)} />
     case 'checkbox':
-      return <input type="checkbox" checked={!!v} onChange={(e) => set(e.target.checked || undefined)} onClick={(e) => e.stopPropagation()} />
+      return <input type="checkbox" checked={v === true} onChange={(e) => set(e.target.checked || undefined)} onClick={(e) => e.stopPropagation()} aria-label={col.label} />
     case 'checklist': {
       const list = Array.isArray(v) ? (v as ChecklistItem[]) : []
       return list.length ? (
@@ -402,18 +427,18 @@ function Cell({ ctl, f, col, zone, zoneEmoji, rels, editing, setEditing }: CellP
       )
     }
     default: {
-      const text = v === undefined || v === null ? '' : String(v)
+      const text = isEmptyValue(v) ? '' : String(v)
       if (editing)
         return (
           <InlineEditor
             value={text}
-            multiline={def.type === 'longtext'}
-            type={def.type === 'number' ? 'number' : def.type === 'date' ? 'date' : 'text'}
-            placeholder={def.placeholder}
+            multiline={def?.type === 'longtext'}
+            type={def?.type === 'number' ? 'number' : def?.type === 'date' ? 'date' : 'text'}
+            placeholder={def?.placeholder}
             onDone={(nv) => {
               setEditing(false)
               if (nv === null || nv === text) return
-              set(def.type === 'number' ? (nv === '' ? undefined : Number(nv)) : nv.trim() ? nv : undefined)
+              set(def?.type === 'number' ? (nv === '' ? undefined : Number(nv)) : nv.trim() ? nv : undefined)
             }}
           />
         )

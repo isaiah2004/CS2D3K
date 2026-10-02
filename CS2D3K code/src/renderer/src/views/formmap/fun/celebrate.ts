@@ -1,4 +1,5 @@
-// Confetti burst on a transient full-window <canvas>. Fired when a decision lands (done / decided / accepted).
+// Confetti burst on a transient full-window <canvas>. Fired when a card reaches a board's last column or a done
+// checkbox is ticked.
 import { resolveColor } from '@/theme/theme'
 
 const DURATION = 1200
@@ -108,10 +109,4 @@ export function celebrate(clientX?: number, clientY?: number): void {
     }
   }
   requestAnimationFrame(frame)
-}
-
-/** True when changing `key` to `value` on a card of `kind` is a win worth celebrating. */
-export function isWin(kind: string, key: string, value: unknown): boolean {
-  if (key !== 'status') return false
-  return (kind === 'feature' && value === 'done') || (kind === 'question' && value === 'decided') || (kind === 'approach' && value === 'accepted')
 }

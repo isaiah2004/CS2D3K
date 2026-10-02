@@ -95,6 +95,10 @@ export interface CanvasExtension {
   onEdgeCreate?(edge: CanvasEdge, data: CanvasData): CanvasEdge
   /** items for the menu shown when an edge is dropped on empty space */
   edgeDropItems?(at: Point, connect: { from: string; side: Side }): MenuItem[]
+  /** a move-drag starts (before the first position update) */
+  onMoveStart?(ids: string[]): void
+  /** every pointer move of a move-drag (keep it cheap: no React state per call unless it changes) */
+  onMoveDrag?(ids: string[], e: PointerEvent): void
   /** called after a move-drag ends (same undo step: update with history:false) */
   onMoveEnd?(ids: string[], e: PointerEvent): void
   /** return true to consume */

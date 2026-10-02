@@ -1,0 +1,432 @@
+/* Inspector: tags, fields, groups, kanban and the registry editors of the Map tab */
+.fm-i-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.fm-i-addtag,
+.fm-i-addopt {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px dashed var(--background-modifier-border-hover);
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fm-i-addopt {
+  padding: 0 5px;
+}
+.fm-i-addtag:hover,
+.fm-i-addopt:hover {
+  color: var(--text-normal);
+  border-color: var(--interactive-accent);
+}
+.fm-i-row {
+  position: relative;
+}
+.fm-i-row:has(> .fm-i-row-x) {
+  grid-template-columns: 92px 1fr 20px;
+}
+.fm-i-row.is-wide:has(> .fm-i-row-x) {
+  grid-template-columns: 1fr 20px;
+}
+.fm-i-row.is-wide:has(> .fm-i-row-x) > .fm-i-control {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.fm-i-row-x {
+  opacity: 0;
+  padding: 2px !important;
+  transition: opacity 0.1s;
+}
+.fm-i-row:hover .fm-i-row-x,
+.fm-i-row:focus-within .fm-i-row-x {
+  opacity: 0.8;
+}
+.fm-i-row-x svg {
+  width: 12px;
+  height: 12px;
+}
+.fm-i-label.is-clickable {
+  cursor: pointer;
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fm-i-label.is-clickable:hover {
+  color: var(--text-normal);
+}
+.fm-i-label.is-clickable[title] {
+  cursor: pointer;
+  text-decoration: none;
+}
+.fm-i-addfield {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+.fm-i-fieldchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.fm-i-fieldchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px 0 6px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+.fm-i-fieldchip:hover {
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+  background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+}
+.fm-i-newfield {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.fm-i-newfield .input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: var(--font-ui-small);
+}
+.fm-i-newfield .dropdown {
+  max-width: 110px;
+  font-size: var(--font-ui-smaller);
+}
+.fm-i-newfield .btn {
+  padding: 4px 9px;
+}
+.fm-i-swatches {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.fm-i-swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--background-secondary);
+  box-shadow: 0 0 0 1px var(--background-modifier-border);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.fm-i-swatch:hover {
+  transform: scale(1.12);
+}
+.fm-i-swatch.is-active {
+  box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+.fm-i-swatch.is-none {
+  background: linear-gradient(135deg, transparent 45%, var(--text-faint) 46%, var(--text-faint) 54%, transparent 55%);
+}
+.fm-i-assign-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-m);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+}
+.fm-i-assign-block > .fm-i-label {
+  font-weight: 600;
+}
+.fm-i-assign-block .dropdown {
+  align-self: flex-start;
+}
+.fm-i-actions.is-wrap {
+  flex-wrap: wrap;
+}
+.fm-i-multi-dot,
+.fm-rel-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.fm-i-kcols {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fm-i-kcol {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.fm-i-kcol .input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 7px;
+  font-size: var(--font-ui-small);
+}
+.fm-i-kcol-dot {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--kb-color);
+}
+.fm-i-kcol-count {
+  min-width: 18px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  font-variant-numeric: tabular-nums;
+}
+.fm-i-kcol .clickable-icon {
+  padding: 2px;
+}
+.fm-i-customrel {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+.fm-i-customrel .input {
+  flex: 1;
+  padding: 4px 8px;
+}
+.fm-relpick-custom {
+  width: 76px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px dashed var(--background-modifier-border-hover);
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  outline: none;
+}
+.fm-relpick-custom:focus {
+  border-style: solid;
+  border-color: var(--interactive-accent);
+}
+.fm-i-section-count {
+  margin-left: 6px;
+  color: var(--text-faint);
+  font-weight: 500;
+}
+.fm-i-danger-btn:hover {
+  color: var(--color-red);
+  border-color: rgba(var(--color-red-rgb), 0.5);
+}
+.fm-check-fix {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+  color: var(--text-accent);
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  cursor: pointer;
+}
+.fm-check-fix:hover {
+  background: color-mix(in srgb, var(--interactive-accent) 20%, transparent);
+}
+.fm-budget-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-green);
+  transition: width 0.4s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+.fm-budget.is-tight .fm-budget-fill {
+  background: var(--color-orange);
+}
+.fm-budget.is-over .fm-budget-fill {
+  background: var(--color-red);
+}
+.fm-kind-tile-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  color: color-mix(in srgb, var(--fm-chip-color) 75%, var(--text-muted));
+}
+
+/* ------------------------------------------------------------ registry editors (Map tab) */
+.fm-reg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fm-reg-item {
+  border-radius: var(--radius-m);
+  border: 1px solid transparent;
+}
+.fm-reg-item.is-open {
+  border-color: var(--background-modifier-border);
+  background: var(--background-primary);
+}
+.fm-reg-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  text-align: left;
+  cursor: pointer;
+}
+.fm-reg-row:hover {
+  background: var(--background-modifier-hover);
+}
+.fm-reg-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fm-reg-emoji {
+  width: 18px;
+  text-align: center;
+}
+.fm-reg-count {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  font-variant-numeric: tabular-nums;
+}
+.fm-reg-muted {
+  color: var(--text-faint);
+}
+.fm-reg-chevron {
+  color: var(--text-faint);
+  transition: transform 0.15s;
+}
+.fm-reg-item.is-open .fm-reg-chevron {
+  transform: rotate(90deg);
+}
+.fm-reg-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 10px 10px;
+}
+.fm-reg-detail .dropdown {
+  font-size: var(--font-ui-smaller);
+}
+.fm-reg-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+.fm-reg-option,
+.fm-reg-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border-radius: var(--radius-s);
+}
+.fm-reg-option:hover,
+.fm-reg-tag:hover,
+.fm-reg-tag.is-focused {
+  background: var(--background-modifier-hover);
+}
+.fm-reg-option .clickable-icon,
+.fm-reg-tag .clickable-icon {
+  padding: 2px;
+  opacity: 0.55;
+}
+.fm-reg-option:hover .clickable-icon,
+.fm-reg-tag:hover .clickable-icon,
+.fm-reg-tag .clickable-icon.is-active {
+  opacity: 1;
+}
+.fm-reg-dot {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 2px var(--background-primary),
+    0 0 0 3px var(--background-modifier-border);
+}
+.fm-reg-optlabel {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  outline: none;
+}
+.fm-reg-optlabel:hover {
+  border-color: var(--background-modifier-border);
+}
+.fm-reg-optlabel:focus {
+  border-color: var(--interactive-accent);
+  background: var(--background-modifier-form-field);
+}
+.fm-reg-option.is-new .fm-reg-optlabel {
+  margin-left: 18px;
+  color: var(--text-muted);
+}
+.fm-reg-for {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.fm-reg-hash {
+  color: var(--text-faint);
+  margin-right: -6px;
+}
+.fm-reg-tags {
+  display: inline-flex;
+  gap: 3px;
+  overflow: hidden;
+}
+.fm-reg-tagdot {
+  font-size: 10.5px;
+  color: color-mix(in srgb, var(--fm-chip-color) 80%, var(--text-normal));
+  white-space: nowrap;
+}
+.fm-reg-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+}
+.fm-reg-actions .btn {
+  padding: 3px 9px;
+  font-size: var(--font-ui-smaller);
+}
+.fm-reg-addfield {
+  align-self: flex-start;
+}

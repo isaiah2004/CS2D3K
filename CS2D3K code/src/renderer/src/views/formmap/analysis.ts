@@ -1,6 +1,33 @@
-// Graph analysis over a form-map: "why" traces and coach checks.
+// Graph analysis over a form-map: "why" traces, the coach checks (generic ones + the map's declarative rules) and stats.
 import type { CanvasData } from '../canvas/model'
-import { cardTitle, effortPoints, forms, type FormMapEdge, type FormNode, type Relation } from './schema'
+import { boardColumns, NONE } from './boards'
+import {
+  assignOf,
+  cardState,
+  cardTitle,
+  fieldLabel,
+  forms,
+  groupChainIn,
+  groups,
+  groupTitle,
+  isEmptyValue,
+  kanbans,
+  matchesFilter,
+  metaOf,
+  parentGroup,
+  relationDef,
+  sameValue,
+  valuePoints,
+  type CardFilter,
+  type CheckLevel,
+  type CheckRule,
+  type ChecklistItem,
+  type FormMapEdge,
+  type FormNode,
+  type Relation
+} from './schema'
+
+export type { CheckLevel } from './schema'
 
 /** Relations that point "upstream" (toward the reason a card exists). */
 const UPSTREAM: Relation[] = ['serves', 'because', 'refines', 'depends']
@@ -45,7 +72,7 @@ export function whyTrace(d: CanvasData, id: string): string[] {
   return [...out]
 }
 
-/** Outgoing relations of a card, by relation type. */
+/** Relations of a card, both directions. */
 export function relationsOf(d: CanvasData, id: string): { relation: Relation; other: string; edgeId: string; dir: 'out' | 'in' }[] {
   const res: { relation: Relation; other: string; edgeId: string; dir: 'out' | 'in' }[] = []
   for (const e of d.edges as FormMapEdge[]) {
@@ -55,8 +82,6 @@ export function relationsOf(d: CanvasData, id: string): { relation: Relation; ot
   return res
 }
 
-export type CheckLevel = 'warn' | 'info' | 'good'
-
 export interface CoachCheck {
   id: string
   level: CheckLevel
@@ -64,217 +89,232 @@ export interface CoachCheck {
   detail?: string
   /** cards involved — clicking reveals them */
   nodes: string[]
+  /** a one-click fix the Coach tab offers (see CoachTab) */
+  fix?: 'apply-groups'
+  /** budget bar (sum rules) */
+  sum?: { value: number; max?: number; label: string; unit?: string }
 }
 
-/** Features that are in a phase (default: all) */
-export function features(d: CanvasData, phase?: string): FormNode[] {
-  return forms(d).filter((f) => f.kind === 'feature' && (!phase || f.fields.phase === phase))
-}
+// ---------------------------------------------------------------- messages
 
-// ---------------------------------------------------------------- stats + coach
-
-/** A feature counts unless it was cut. */
-const isLive = (f: FormNode): boolean => f.fields.status !== 'cut'
-
-export const isOpenQuestion = (f: FormNode): boolean => f.kind === 'question' && (!f.fields.status || f.fields.status === 'open')
-
-/** A card that no longer needs a decision (cut, superseded, decided, parked, dropped, merged). */
-function isSettled(f: FormNode | undefined): boolean {
-  if (!f) return true
-  const s = f.fields.status
-  return s === 'cut' || s === 'superseded' || s === 'decided' || s === 'parked' || s === 'dropped' || s === 'merged'
-}
-
-export interface MvpStats {
-  /** MVP features that were not cut */
-  total: number
-  done: number
-  /** effort points of those features */
-  points: number
-  /** null = no budget set */
-  budget: number | null
-}
-
-export function mvpStats(d: CanvasData): MvpStats {
-  const mvp = features(d, 'mvp').filter(isLive)
-  const budget = (d as { formmap?: { mvpBudget?: number } }).formmap?.mvpBudget
-  return {
-    total: mvp.length,
-    done: mvp.filter((f) => f.fields.status === 'done').length,
-    points: mvp.reduce((s, f) => s + effortPoints(f.fields.effort), 0),
-    budget: typeof budget === 'number' && budget > 0 ? budget : null
-  }
-}
-
-export interface MapStats {
-  openQuestions: number
-  /** accepted approaches + decided questions */
-  decisions: number
-  votes: number
-}
-
-export function mapStats(d: CanvasData): MapStats {
-  const s: MapStats = { openQuestions: 0, decisions: 0, votes: 0 }
-  for (const f of forms(d)) {
-    s.votes += f.votes ?? 0
-    if (isOpenQuestion(f)) s.openQuestions++
-    else if ((f.kind === 'question' && f.fields.status === 'decided') || (f.kind === 'approach' && f.fields.status === 'accepted')) s.decisions++
-  }
-  return s
-}
-
-const count = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
-const itThem = (n: number): string => (n === 1 ? 'it' : 'them')
-
-function titles(list: FormNode[]): string {
+const titleList = (list: { title?: string; text?: string }[]): string => {
   const names = list.slice(0, 3).map((f) => `“${cardTitle(f)}”`)
   return names.join(', ') + (list.length > 3 ? ` and ${list.length - 3} more` : '')
 }
 
-/** Decision-support checks over the map: warnings first, then info, then good news. */
+/** "{n} {n|card|cards}" style templates: {n}, {titles}, {sum}, {max}, {unit}, {label} and {n|singular|plural}. */
+export function fmt(template: string, vars: { n?: number; titles?: string; [k: string]: string | number | undefined }): string {
+  return template.replace(/\{(\w+)(?:\|([^|}]*)\|([^}]*))?\}/g, (m, key: string, one?: string, many?: string) => {
+    const v = vars[key]
+    if (one !== undefined) return v === 1 ? one : (many ?? '')
+    return v === undefined ? m : String(v)
+  })
+}
+
+const count = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
+
+// ---------------------------------------------------------------- rules
+
+/** Runs one declarative rule (a template's check) over the cards. */
+export function runRule(d: CanvasData, rule: CheckRule, all: FormNode[] = forms(d)): CoachCheck | null {
+  const matched = all.filter((c) => matchesFilter(c, rule.match))
+  const level = rule.level ?? 'info'
+  const finish = (flagged: FormNode[], lvl: CheckLevel = level): CoachCheck | null => {
+    if (flagged.length) return { id: rule.id, level: lvl, title: fmt(rule.title ?? '', { n: flagged.length }), detail: rule.detail ? fmt(rule.detail, { n: flagged.length, titles: titleList(flagged) }) : undefined, nodes: flagged.map((f) => f.id) }
+    return matched.length && rule.good ? { id: rule.id, level: 'good', title: rule.good, nodes: [] } : null
+  }
+  switch (rule.type) {
+    case 'relation': {
+      const byId = new Map(all.map((c) => [c.id, c]))
+      const ok = new Set<string>()
+      for (const e of d.edges as FormMapEdge[]) {
+        if ((e.relation ?? 'relates') !== rule.relation) continue
+        const [self, other] = rule.dir === 'in' ? [e.toNode, e.fromNode] : [e.fromNode, e.toNode]
+        const o = byId.get(other)
+        if (!rule.target || (o && matchesFilter(o, rule.target))) ok.add(self)
+      }
+      return finish(matched.filter((c) => !ok.has(c.id)))
+    }
+    case 'field':
+      return finish(matched.filter((c) => isEmptyValue(c.fields[rule.field])))
+    case 'count':
+      return finish(matched, rule.warnAbove !== undefined && matched.length > rule.warnAbove ? 'warn' : level)
+    case 'sum': {
+      if (!matched.length) return null
+      const def = metaOf(d).fields?.[rule.field]
+      const value = matched.reduce((s, c) => s + valuePoints(def, c.fields[rule.field]), 0)
+      const unit = rule.unit ? ` ${rule.unit}` : ''
+      const sum = { value, max: rule.max, label: rule.label, unit: rule.unit }
+      if (!rule.max) return { id: rule.id, level: 'info', title: `${rule.label}: ${value}${unit}`, nodes: [], sum }
+      if (value > rule.max)
+        return {
+          id: rule.id,
+          level: 'warn',
+          title: `${rule.label} is over budget: ${value} / ${rule.max}${unit}`,
+          detail: `Move ${value - rule.max}+${unit} out, or shrink cards. The smallest scope that proves the idea wins.`,
+          nodes: matched.map((c) => c.id),
+          sum
+        }
+      return { id: rule.id, level: 'good', title: `${rule.label} fits the budget (${value} / ${rule.max}${unit})`, nodes: [], sum }
+    }
+  }
+}
+
+/** Decision-support checks: generic ones, then the map's own rules. Warnings first, then info, then good news. */
 export function coachChecks(d: CanvasData): CoachCheck[] {
   const all = forms(d)
+  const meta = metaOf(d)
+  const reg = meta.fields ?? {}
+  const gs = groups(d)
+  const nodeIds = new Set(d.nodes.map((n) => n.id))
   const cards = new Map(all.map((f) => [f.id, f]))
   const edges = d.edges as FormMapEdge[]
-  const rel = (e: FormMapEdge): Relation => e.relation ?? 'relates'
-  const ofKind = (kind: FormNode['kind']): FormNode[] => all.filter((f) => f.kind === kind)
   const out: CoachCheck[] = []
   const ids = (list: FormNode[]): string[] => list.map((f) => f.id)
+  const detail = (list: FormNode[], tail: string): string => `${titleList(list)}. ${tail}`
 
-  // features <-> goals
-  const feats = ofKind('feature').filter(isLive)
-  const goals = ofKind('goal')
-  const serves = edges.filter((e) => rel(e) === 'serves')
-  // linear lookups (these were nested scans: goals × serves × features on big maps)
-  const featIds = new Set(feats.map((f) => f.id))
-  const servesAGoal = new Set<string>()
-  const servedGoals = new Set<string>()
-  for (const e of serves) {
-    if (cards.get(e.toNode)?.kind === 'goal') servesAGoal.add(e.fromNode)
-    if (featIds.has(e.fromNode)) servedGoals.add(e.toNode)
+  // broken relations (an end is missing)
+  const dangling = edges.filter((e) => !nodeIds.has(e.fromNode) || !nodeIds.has(e.toNode))
+  if (dangling.length)
+    out.push({ id: 'dangling', level: 'warn', title: count(dangling.length, 'broken relation'), detail: 'They point at cards that no longer exist. Remove them from the Card tab or the canvas.', nodes: dangling.flatMap((e) => [e.fromNode, e.toNode, e.id]).filter((id) => nodeIds.has(id)) })
+
+  // contradictions between cards that are still open
+  const settled = (id: string): boolean => {
+    const c = cards.get(id)
+    return !c || cardState(c, reg) !== null
   }
-  const orphans = feats.filter((f) => !servesAGoal.has(f.id))
-  if (orphans.length)
-    out.push({
-      id: 'feature-no-goal',
-      level: 'warn',
-      title: `${count(orphans.length, 'feature')} ${orphans.length === 1 ? 'serves' : 'serve'} no goal`,
-      detail: `${titles(orphans)}. Connect each to the goal it helps achieve — or ask whether it belongs at all.`,
-      nodes: ids(orphans)
-    })
-  else if (feats.length && goals.length) out.push({ id: 'feature-no-goal', level: 'good', title: 'Every feature serves a goal', nodes: [] })
-
-  const lonely = goals.filter((g) => !servedGoals.has(g.id))
-  if (lonely.length)
-    out.push({
-      id: 'goal-no-features',
-      level: 'warn',
-      title: `${count(lonely.length, 'goal')} with no features`,
-      detail: `${titles(lonely)}. Nothing we plan to build moves ${itThem(lonely.length)} forward.`,
-      nodes: ids(lonely)
-    })
-  else if (goals.length) out.push({ id: 'goal-no-features', level: 'good', title: 'Every goal has features serving it', nodes: [] })
-
-  // MVP budget + sizing
-  const mvp = features(d, 'mvp').filter(isLive)
-  const stats = mvpStats(d)
-  if (stats.budget !== null && mvp.length) {
-    if (stats.points > stats.budget)
-      out.push({
-        id: 'mvp-budget',
-        level: 'warn',
-        title: `MVP is over budget: ${stats.points} / ${stats.budget} pts`,
-        detail: `Move ${stats.points - stats.budget}+ points to Later, or shrink features. The smallest MVP that proves the idea wins.`,
-        nodes: ids(mvp)
-      })
-    else out.push({ id: 'mvp-budget', level: 'good', title: `MVP fits the budget (${stats.points} / ${stats.budget} pts)`, nodes: [] })
-  }
-  const unsized = mvp.filter((f) => !f.fields.effort)
-  if (unsized.length)
-    out.push({
-      id: 'mvp-unsized',
-      level: 'info',
-      title: `${count(unsized.length, 'MVP feature')} without an effort estimate`,
-      detail: `${titles(unsized)}. The budget can't see ${itThem(unsized.length)}.`,
-      nodes: ids(unsized)
-    })
-
-  // principles nobody references via `because`
-  const principles = ofKind('principle')
-  const becauseTargets = new Set(edges.filter((e) => rel(e) === 'because').map((e) => e.toNode))
-  const unused = principles.filter((p) => !becauseTargets.has(p.id))
-  if (unused.length)
-    out.push({
-      id: 'unused-principles',
-      level: 'info',
-      title: `${count(unused.length, 'principle')} nobody relies on`,
-      detail: `${titles(unused)}. No decision is "because" of ${itThem(unused.length)} — link one, or let the principle go.`,
-      nodes: ids(unused)
-    })
-  else if (principles.length) out.push({ id: 'unused-principles', level: 'good', title: 'Every principle drives a decision', nodes: [] })
-
-  // approaches still proposed
-  const approaches = ofKind('approach')
-  const proposed = approaches.filter((a) => !a.fields.status || a.fields.status === 'proposed')
-  if (proposed.length)
-    out.push({
-      id: 'approaches-proposed',
-      level: 'info',
-      title: `${count(proposed.length, 'approach', 'approaches')} still proposed`,
-      detail: `${titles(proposed)}. Accept or supersede ${itThem(proposed.length)} so everyone builds with confidence.`,
-      nodes: ids(proposed)
-    })
-  else if (approaches.length) out.push({ id: 'approaches-proposed', level: 'good', title: 'All engineering approaches are decided', nodes: [] })
-
-  // open questions + contradictions
-  const questions = ofKind('question')
-  const open = questions.filter(isOpenQuestion)
-  if (open.length)
-    out.push({
-      id: 'open-questions',
-      level: open.length > 3 ? 'warn' : 'info',
-      title: count(open.length, 'open question'),
-      detail: `${titles(open)}. Decide ${itThem(open.length)}, or park ${itThem(open.length)} explicitly.`,
-      nodes: ids(open)
-    })
-  else if (questions.length) out.push({ id: 'open-questions', level: 'good', title: 'No open questions left', nodes: [] })
-
-  const conflicts = edges.filter((e) => rel(e) === 'contradicts' && !isSettled(cards.get(e.fromNode)) && !isSettled(cards.get(e.toNode)))
+  const conflicts = edges.filter((e) => e.relation === 'contradicts' && nodeIds.has(e.fromNode) && nodeIds.has(e.toNode) && !settled(e.fromNode) && !settled(e.toNode))
   if (conflicts.length)
     out.push({
       id: 'contradictions',
       level: 'warn',
       title: count(conflicts.length, 'unresolved contradiction'),
-      detail: 'Two cards pull in opposite directions. Decide which wins, then cut, supersede or park the other.',
+      detail: 'Two cards pull in opposite directions. Decide which wins, then close, cut or park the other.',
       nodes: [...new Set(conflicts.flatMap((e) => [e.fromNode, e.toNode, e.id]))]
     })
 
-  // acceptance criteria
-  const noCriteria = mvp.filter((f) => !Array.isArray(f.fields.acceptance) || !f.fields.acceptance.length)
-  if (noCriteria.length)
+  // cards whose fields disagree with what their group assigns (moved in before the group assigned it, or edited later)
+  const chains = new Map(all.map((c) => [c.id, groupChainIn(gs, c)]))
+  const mismatched = all.filter((c) => Object.entries(assignOf(chains.get(c.id)!)).some(([k, v]) => !sameValue(c.fields[k], v)))
+  if (mismatched.length)
     out.push({
-      id: 'mvp-no-acceptance',
+      id: 'group-mismatch',
       level: 'info',
-      title: `${count(noCriteria.length, 'MVP feature')} without acceptance criteria`,
-      detail: `${titles(noCriteria)}. How will we know ${noCriteria.length === 1 ? 'it is' : 'they are'} done?`,
-      nodes: ids(noCriteria)
-    })
-  else if (mvp.length) out.push({ id: 'mvp-no-acceptance', level: 'good', title: 'Every MVP feature has acceptance criteria', nodes: [] })
-
-  // idea inbox
-  const raw = ofKind('idea').filter((i) => !i.fields.status || i.fields.status === 'raw')
-  if (raw.length)
-    out.push({
-      id: 'raw-ideas',
-      level: 'info',
-      title: `${count(raw.length, 'raw idea')} waiting in the inbox`,
-      detail: `${titles(raw)}. Triage: refine into a feature, merge, or drop.`,
-      nodes: ids(raw)
+      title: `${count(mismatched.length, 'card')} ${mismatched.length === 1 ? "doesn't" : "don't"} match ${mismatched.length === 1 ? 'its group' : 'their groups'}`,
+      detail: detail(mismatched, 'Their group sets fields they lack or contradict.'),
+      nodes: ids(mismatched),
+      fix: 'apply-groups'
     })
 
-  if (!feats.length && !goals.length && !principles.length)
-    out.push({ id: 'empty', level: 'info', title: 'Start with the core idea', detail: 'Then add a goal, a few principles, and the features that serve them.', nodes: [] })
+  // field boards: cards in scope without a value for the board's field
+  for (const b of meta.boards ?? []) {
+    if (b.source.mode !== 'field') continue
+    const none = boardColumns(d, b).find((c) => c.key === NONE)?.cards ?? []
+    if (none.length)
+      out.push({
+        id: `board-field:${b.id}`,
+        level: 'info',
+        title: `${count(none.length, 'card')} without ${fieldLabel(b.source.field, reg[b.source.field]).toLowerCase()} on “${b.name}”`,
+        detail: detail(none, 'Set it so the board can place them.'),
+        nodes: ids(none)
+      })
+  }
+
+  // the map's own (template) rules
+  for (const r of meta.checks ?? []) {
+    try {
+      const c = runRule(d, r, all)
+      if (c) out.push(c)
+    } catch {
+      /* a hand-edited rule must not break the coach */
+    }
+  }
+
+  // structure
+  if (gs.length) {
+    const loose = all.filter((c) => !chains.get(c.id)!.length)
+    if (loose.length) out.push({ id: 'no-group', level: 'info', title: `${count(loose.length, 'card')} outside any group`, detail: detail(loose, 'Drop them into a group to give them meaning.'), nodes: ids(loose) })
+    const used = new Set<string>()
+    for (const n of d.nodes) {
+      if (n.type === 'group' || n.type === 'drawing') continue
+      for (const g of groupChainIn(gs, n)) used.add(g.id)
+    }
+    const parents = new Set(gs.map((o) => parentGroup(gs, o)?.id))
+    const empty = gs.filter((g) => !used.has(g.id) && !parents.has(g.id))
+    if (empty.length)
+      out.push({ id: 'empty-groups', level: 'info', title: count(empty.length, 'empty group'), detail: `${empty.slice(0, 3).map((g) => `“${groupTitle(g)}”`).join(', ')}${empty.length > 3 ? ` and ${empty.length - 3} more` : ''}. Fill or remove ${empty.length === 1 ? 'it' : 'them'}.`, nodes: empty.map((g) => g.id) })
+  }
+  if (all.some((c) => c.tags?.length)) {
+    const untagged = all.filter((c) => !c.tags?.length)
+    if (untagged.length) out.push({ id: 'untagged', level: 'info', title: count(untagged.length, 'untagged card'), detail: detail(untagged, 'Tags make them easy to filter, color and check.'), nodes: ids(untagged) })
+  }
+  const checklists = all.filter((c) => Object.entries(c.fields).some(([k, v]) => reg[k]?.type === 'checklist' && Array.isArray(v) && (v as ChecklistItem[]).some((i) => !i?.done)))
+  if (checklists.length)
+    out.push({ id: 'open-checklists', level: 'info', title: `${count(checklists.length, 'card')} with open checklist items`, detail: detail(checklists, 'Tick them off as they get done.'), nodes: ids(checklists) })
+  const byTitle = new Map<string, FormNode[]>()
+  for (const c of all) {
+    const t = c.title?.trim().toLowerCase()
+    if (!t) continue
+    const list = byTitle.get(t)
+    if (list) list.push(c)
+    else byTitle.set(t, [c])
+  }
+  const dupes = [...byTitle.values()].filter((l) => l.length > 1)
+  if (dupes.length)
+    out.push({
+      id: 'duplicates',
+      level: 'info',
+      title: count(dupes.length, 'duplicate title'),
+      detail: `${dupes.slice(0, 3).map((l) => `“${cardTitle(l[0])}” ×${l.length}`).join(', ')}. Merge them, or say how they differ.`,
+      nodes: dupes.flat().map((c) => c.id)
+    })
+  if (!all.length && !kanbans(d).length) out.push({ id: 'empty', level: 'info', title: 'Start by capturing a few cards', detail: 'Double-click the canvas, or use the toolbar. Group them when patterns appear.', nodes: [] })
 
   const rank: Record<CheckLevel, number> = { warn: 0, info: 1, good: 2 }
-  return out.sort((a, b) => rank[a.level] - rank[b.level])
+  return out.map((c, i) => ({ c, i })).sort((a, b) => rank[a.c.level] - rank[b.c.level] || a.i - b.i).map((x) => x.c)
 }
+
+// ---------------------------------------------------------------- stats
+
+export interface MapStats {
+  cards: number
+  groups: number
+  boards: number
+  kanbans: number
+  votes: number
+  /** checklist items across all checklist fields */
+  checklist: { done: number; total: number }
+}
+
+export function mapStats(d: CanvasData): MapStats {
+  const reg = metaOf(d).fields ?? {}
+  const s: MapStats = { cards: 0, groups: groups(d).length, boards: metaOf(d).boards?.length ?? 0, kanbans: 0, votes: 0, checklist: { done: 0, total: 0 } }
+  for (const n of d.nodes) {
+    if (n.type === 'kanban') s.kanbans++
+    if (n.type !== 'form') continue
+    const f = n as FormNode
+    s.cards++
+    s.votes += f.votes ?? 0
+    for (const [k, v] of Object.entries(f.fields ?? {}))
+      if (reg[k]?.type === 'checklist' && Array.isArray(v))
+        for (const i of v as ChecklistItem[]) {
+          s.checklist.total++
+          if (i?.done) s.checklist.done++
+        }
+  }
+  return s
+}
+
+/** Cards with checklist items (HUD highlight). */
+export function checklistCards(d: CanvasData): string[] {
+  const reg = metaOf(d).fields ?? {}
+  return forms(d)
+    .filter((f) => Object.entries(f.fields).some(([k, v]) => reg[k]?.type === 'checklist' && Array.isArray(v) && v.length))
+    .map((f) => f.id)
+}
+
+/** Matching helper re-exported for the lenses (focus filter, board filter). */
+export const cardMatches = (c: FormNode, f: CardFilter | undefined): boolean => matchesFilter(c, f)
+
+/** Relation label for a direction ("Serves" / "Served by"). */
+export const relationTitle = (r: Relation, dir: 'out' | 'in'): string => (dir === 'out' ? relationDef(r).label : relationDef(r).inverse)

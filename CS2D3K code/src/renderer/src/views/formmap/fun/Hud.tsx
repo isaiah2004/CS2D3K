@@ -1,78 +1,117 @@
-// Progress HUD overlay for the map: MVP progress ring, open questions, decisions and votes. Collapsible.
+// Progress HUD overlay for the map: a progress ring for a chosen board's last column (or the checklists), and map
+// stats (cards, groups, boards, checklist items done, votes). Collapsible.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { FormMapCtl } from '../context'
-import { features, isOpenQuestion, mapStats, mvpStats } from '../analysis'
+import { checklistCards, mapStats } from '../analysis'
+import { boardProgress } from '../boards'
 import { forms } from '../schema'
+import { setMeta } from '../lenses/ops'
+import { showContextMenu } from '@/store/ui'
 import './fun.css'
 
 const KEY = 'cs2d3k.formmap.hudCollapsed'
 
 export default function Hud({ ctl }: { ctl: FormMapCtl }) {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(KEY) === '1')
-  const mvp = useMemo(() => mvpStats(ctl.data), [ctl.data])
   const stats = useMemo(() => mapStats(ctl.data), [ctl.data])
-  const pct = mvp.total ? mvp.done / mvp.total : 0
-  const complete = mvp.total > 0 && mvp.done === mvp.total
+  const boards = ctl.meta.boards ?? []
+  const board = boards.find((b) => b.id === ctl.meta.hudBoard) ?? boards[0]
+  const prog = useMemo(() => (board ? boardProgress(ctl.data, board) : null), [ctl.data, board])
+  const ring = prog ? { done: prog.done, total: prog.total } : stats.checklist.total ? stats.checklist : null
+  const pct = ring?.total ? ring.done / ring.total : 0
+  const complete = !!ring && ring.total > 0 && ring.done === ring.total
 
   // little bump whenever progress grows
   const [bump, setBump] = useState(false)
-  const prevDone = useRef(mvp.done)
+  const prevDone = useRef(ring?.done ?? 0)
   useEffect(() => {
-    if (mvp.done > prevDone.current) {
+    const done = ring?.done ?? 0
+    if (done > prevDone.current) {
       setBump(true)
       const t = setTimeout(() => setBump(false), 600)
-      prevDone.current = mvp.done
+      prevDone.current = done
       return () => clearTimeout(t)
     }
-    prevDone.current = mvp.done
-  }, [mvp.done])
+    prevDone.current = done
+  }, [ring?.done])
 
   const toggle = (): void => {
     setCollapsed(!collapsed)
     localStorage.setItem(KEY, collapsed ? '0' : '1')
   }
   const show = (ids: string[]): void => ctl.setHighlight(ids.length ? ids : null)
-  const mvpIds = (): string[] => features(ctl.data, 'mvp').filter((f) => f.fields.status !== 'cut').map((f) => f.id)
-  const openIds = (): string[] => forms(ctl.data).filter(isOpenQuestion).map((f) => f.id)
-  const decidedIds = (): string[] =>
-    forms(ctl.data)
-      .filter((f) => (f.kind === 'question' && f.fields.status === 'decided') || (f.kind === 'approach' && f.fields.status === 'accepted'))
-      .map((f) => f.id)
-  const votedIds = (): string[] =>
-    forms(ctl.data)
-      .filter((f) => f.votes)
-      .map((f) => f.id)
+  const ringIds = (): string[] => (prog?.column ? prog.column.cards.map((c) => c.id) : checklistCards(ctl.data))
+  const chooseBoard = (e: React.MouseEvent): void =>
+    showContextMenu(e, [
+      ...boards.map((b) => ({ label: b.name, checked: b.id === board?.id, onClick: () => setMeta(ctl, { hudBoard: b.id }) })),
+      ...(boards.length ? [{ separator: true }] : []),
+      { label: 'Open the Board lens', onClick: () => (board ? ctl.openBoard(board.id) : ctl.setLens('board')) }
+    ])
 
   const R = 15
   const C = 2 * Math.PI * R
+  const title = prog && board ? board.name : ring ? 'Checklists' : 'This map'
 
   return (
     <div className={`fm-hud${collapsed ? ' is-collapsed' : ''}${complete ? ' is-complete' : ''}`} onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
-      <button className={`fm-hud-ring${bump ? ' is-bump' : ''}`} title={`MVP progress: ${mvp.done} of ${mvp.total} features done — click to highlight`} onClick={() => show(mvpIds())}>
+      <button
+        className={`fm-hud-ring${bump ? ' is-bump' : ''}`}
+        title={ring ? `${title}: ${ring.done} of ${ring.total} done — click to highlight` : 'No board yet — create one in the Board lens'}
+        onClick={() => (ring ? show(ringIds()) : ctl.setLens('board'))}
+      >
         <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden>
           <circle className="fm-hud-ring-track" cx="20" cy="20" r={R} />
           <circle className="fm-hud-ring-fill" cx="20" cy="20" r={R} strokeDasharray={C} strokeDashoffset={C * (1 - pct)} />
         </svg>
-        <span className="fm-hud-ring-label">{complete ? '🎉' : `${Math.round(pct * 100)}%`}</span>
+        <span className="fm-hud-ring-label">{complete ? '🎉' : ring ? `${Math.round(pct * 100)}%` : '—'}</span>
       </button>
       {!collapsed && (
         <div className="fm-hud-stats">
-          <div className="fm-hud-title">
-            MVP <b>{mvp.done}</b>/{mvp.total} done
-          </div>
+          <button className="fm-hud-title" title={boards.length ? 'Choose the board the ring follows' : 'Boards'} onClick={chooseBoard}>
+            <span className="fm-hud-title-name">{title}</span>
+            {ring && (
+              <span className="fm-hud-title-num">
+                <b>{ring.done}</b>/{ring.total} done
+              </span>
+            )}
+            <ChevronDown size={12} />
+          </button>
           <div className="fm-hud-row">
-            <button className="fm-hud-stat" title="Open questions — click to highlight" onClick={() => show(openIds())}>
-              <span>❓</span>
-              <b>{stats.openQuestions}</b>
-              <span className="fm-hud-cap">open</span>
+            <button className="fm-hud-stat" title="Cards on the map" onClick={() => show(forms(ctl.data).map((f) => f.id))}>
+              <span>🃏</span>
+              <b>{stats.cards}</b>
+              <span className="fm-hud-cap">cards</span>
             </button>
-            <button className="fm-hud-stat" title="Decisions: accepted approaches + decided questions" onClick={() => show(decidedIds())}>
-              <span>✅</span>
-              <b>{stats.decisions}</b>
-              <span className="fm-hud-cap">decided</span>
+            <button className="fm-hud-stat" title="Groups" onClick={() => ctl.setInspectorOpen(true)}>
+              <span>🗂️</span>
+              <b>{stats.groups}</b>
+              <span className="fm-hud-cap">groups</span>
             </button>
-            <button className="fm-hud-stat" title="Total dot votes" onClick={() => show(votedIds())}>
+            <button className="fm-hud-stat" title="Saved boards + kanban nodes — click to open the Board lens" onClick={() => (board ? ctl.openBoard(board.id) : ctl.setLens('board'))}>
+              <span>📋</span>
+              <b>{stats.boards + stats.kanbans}</b>
+              <span className="fm-hud-cap">boards</span>
+            </button>
+            <button className="fm-hud-stat" title="Checklist items done — click to highlight cards with checklists" onClick={() => show(checklistCards(ctl.data))}>
+              <span>☑️</span>
+              <b>
+                {stats.checklist.done}
+                {stats.checklist.total ? `/${stats.checklist.total}` : ''}
+              </b>
+              <span className="fm-hud-cap">checked</span>
+            </button>
+            <button
+              className="fm-hud-stat"
+              title="Total dot votes — click to highlight voted cards"
+              onClick={() =>
+                show(
+                  forms(ctl.data)
+                    .filter((f) => f.votes)
+                    .map((f) => f.id)
+                )
+              }
+            >
               <span>🗳️</span>
               <b>{stats.votes}</b>
               <span className="fm-hud-cap">votes</span>

@@ -172,11 +172,14 @@ export function canvasVault(n, { fresh = false } = {}) {
   return writeVault(`canvas-${n}`, [[`Bench ${n}.canvas`, JSON.stringify({ nodes, edges })]], fresh)
 }
 
-/** A .formmap with n form cards spread over the product-definition zones, ~1 relation per card. */
+/**
+ * A .formmap (format version 2) with n plain cards spread over the product-definition groups (tags instead of the old
+ * kinds, a field registry), ~1 relation per card, and a saved board over the groups (the Board lens renders it).
+ */
 export function formmapVault(n, { fresh = false } = {}) {
   const r = rng(n * 13)
-  const kinds = ['idea', 'principle', 'goal', 'approach', 'feature', 'feature', 'feature', 'question']
-  const zoneSpecs = [
+  const tags = ['idea', 'principle', 'goal', 'approach', 'feature', 'feature', 'feature', 'question']
+  const groupSpecs = [
     ['Philosophy', 'principle', {}],
     ['Engineering approach', 'approach', {}],
     ['Final goal', 'goal', { horizon: 'final' }],
@@ -184,24 +187,24 @@ export function formmapVault(n, { fresh = false } = {}) {
     ['Later features', 'feature', { phase: 'later' }],
     ['Open questions', 'question', {}]
   ]
-  const perZone = Math.ceil(n / zoneSpecs.length)
-  const zcols = Math.ceil(Math.sqrt(perZone))
-  const zoneW = zcols * 300 + 80
-  const zoneH = Math.ceil(perZone / zcols) * 190 + 120
-  const nodes = zoneSpecs.map(([label, kind, assign], i) => ({
-    id: `z${i}`, type: 'zone', label, emoji: '📦', defaultKind: kind, assign, locked: true, order: i + 1,
-    x: (i % 3) * (zoneW + 80), y: Math.floor(i / 3) * (zoneH + 80), width: zoneW, height: zoneH
+  const perGroup = Math.ceil(n / groupSpecs.length)
+  const gcols = Math.ceil(Math.sqrt(perGroup))
+  const groupW = gcols * 300 + 80
+  const groupH = Math.ceil(perGroup / gcols) * 190 + 120
+  const nodes = groupSpecs.map(([label, preset, assign], i) => ({
+    id: `z${i}`, type: 'group', label, emoji: '📦', preset, assign, locked: true, order: i + 1,
+    x: (i % 3) * (groupW + 80), y: Math.floor(i / 3) * (groupH + 80), width: groupW, height: groupH
   }))
   for (let i = 0; i < n; i++) {
-    const zi = i % zoneSpecs.length
-    const z = nodes[zi]
-    const k = Math.floor(i / zoneSpecs.length)
-    const kind = zoneSpecs[zi][1] === 'feature' ? 'feature' : kinds[Math.floor(r() * kinds.length)]
+    const gi = i % groupSpecs.length
+    const g = nodes[gi]
+    const k = Math.floor(i / groupSpecs.length)
+    const tag = groupSpecs[gi][1] === 'feature' ? 'feature' : tags[Math.floor(r() * tags.length)]
     nodes.push({
-      id: `c${i}`, type: 'form', kind, title: `Card ${i}`, text: `Description of card ${i}.`,
-      fields: kind === 'feature' ? { phase: zi === 3 ? 'mvp' : 'later', priority: 'should', effort: 'm', status: 'planned', fun: 3 } : {},
+      id: `c${i}`, type: 'form', title: `Card ${i}`, text: `Description of card ${i}.`, tags: [tag],
+      fields: tag === 'feature' ? { phase: gi === 3 ? 'mvp' : 'later', priority: 'should', effort: 'm', status: 'planned', fun: 3 } : {},
       votes: Math.floor(r() * 4),
-      x: z.x + 40 + (k % zcols) * 300, y: z.y + 80 + Math.floor(k / zcols) * 190, width: 280, height: 170
+      x: g.x + 40 + (k % gcols) * 300, y: g.y + 80 + Math.floor(k / gcols) * 190, width: 280, height: 170
     })
   }
   const edges = []
@@ -209,5 +212,12 @@ export function formmapVault(n, { fresh = false } = {}) {
     const b = Math.floor(r() * n)
     if (b !== i) edges.push({ id: `e${i}`, fromNode: `c${i}`, toNode: `c${b}`, relation: r() < 0.5 ? 'serves' : 'relates', toEnd: 'arrow' })
   }
-  return writeVault(`formmap-${n}`, [[`Bench ${n}.formmap`, JSON.stringify({ formmap: { version: 1, mvpBudget: 40 }, nodes, edges })]], fresh)
+  const sel = (values) => ({ type: 'select', options: values.map((value) => ({ value })) })
+  const formmap = {
+    version: 2,
+    fields: { phase: sel(['mvp', 'next', 'later']), priority: sel(['must', 'should', 'could']), effort: sel(['s', 'm', 'l']), status: sel(['planned', 'done']), fun: { type: 'rating', max: 5 }, horizon: sel(['final']) },
+    tags: Object.fromEntries([...new Set(tags)].map((t) => [t, { color: 'blue' }])),
+    boards: [{ id: 'b1', name: 'Groups', source: { mode: 'groups', groupIds: nodes.slice(0, groupSpecs.length).map((g) => g.id) } }]
+  }
+  return writeVault(`formmap2-${n}`, [[`Bench ${n}.formmap`, JSON.stringify({ formmap, nodes, edges })]], fresh)
 }

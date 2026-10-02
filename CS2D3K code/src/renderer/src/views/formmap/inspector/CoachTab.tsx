@@ -1,9 +1,10 @@
-// Inspector "Coach" tab: MVP budget + progress, counts per kind, and decision-support checks.
+// Inspector "Coach" tab: budgets (sum rules), tag counts and the checks (generic ones + the map's own rules).
 import { useMemo } from 'react'
+import { Wand2 } from 'lucide-react'
 import type { FormMapCtl } from '../context'
-import { coachChecks, features, mvpStats, type CoachCheck } from '../analysis'
-import { cardTitle, effortPoints, EFFORTS, FEATURE_STATUS, forms, KIND_ORDER, KINDS, type FormKind } from '../schema'
-import { setMeta } from '../lenses/ops'
+import { coachChecks, type CoachCheck } from '../analysis'
+import { tagColor, type CheckRule } from '../schema'
+import { applyGroupFields, setMeta, tagUsage } from '../lenses/ops'
 
 const LEVEL_ICON: Record<CoachCheck['level'], string> = { warn: '⚠️', info: '💡', good: '✅' }
 
@@ -11,6 +12,8 @@ export default function CoachTab({ ctl }: { ctl: FormMapCtl }) {
   const checks = useMemo(() => coachChecks(ctl.data), [ctl.data])
   const warns = checks.filter((c) => c.level === 'warn').length
   const mood = warns === 0 ? { emoji: '😄', text: 'Looking healthy' } : warns <= 2 ? { emoji: '🙂', text: 'A few things to decide' } : { emoji: '😬', text: 'Needs some decisions' }
+  const sums = (ctl.meta.checks ?? []).filter((r): r is Extract<CheckRule, { type: 'sum' }> => r.type === 'sum')
+  const listed = checks.filter((c) => !c.sum || c.level === 'warn')
 
   const onCheck = (c: CoachCheck): void => {
     if (!c.nodes.length) return
@@ -31,13 +34,15 @@ export default function CoachTab({ ctl }: { ctl: FormMapCtl }) {
           </div>
         </div>
       </div>
-      <Budget ctl={ctl} />
-      <KindCounts ctl={ctl} />
+      {sums.map((r) => (
+        <Budget key={r.id} ctl={ctl} rule={r} check={checks.find((c) => c.id === r.id)} />
+      ))}
+      <TagTiles ctl={ctl} />
       <div className="fm-i-section-head fm-coach-checks-head">
         <span>Checks</span>
       </div>
       <div className="fm-coach-checks">
-        {checks.map((c) => {
+        {listed.map((c) => {
           const active = !!c.nodes.length && ctl.highlight?.length === c.nodes.length && c.nodes.every((n) => ctl.highlight!.includes(n))
           return (
             <div
@@ -53,106 +58,86 @@ export default function CoachTab({ ctl }: { ctl: FormMapCtl }) {
               <div className="fm-check-body">
                 <div className="fm-check-title">{c.title}</div>
                 {c.detail && <div className="fm-check-detail">{c.detail}</div>}
+                {c.fix === 'apply-groups' && (
+                  <button
+                    className="fm-check-fix"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      applyGroupFields(ctl, c.nodes)
+                    }}
+                  >
+                    <Wand2 size={12} /> Apply the group fields
+                  </button>
+                )}
               </div>
               {c.nodes.length > 0 && <span className="fm-check-count">{c.nodes.filter((id) => ctl.data.nodes.some((n) => n.id === id)).length}</span>}
             </div>
           )
         })}
+        {!listed.length && <div className="fm-i-muted">Nothing to flag. Nice.</div>}
       </div>
     </div>
   )
 }
 
-function Budget({ ctl }: { ctl: FormMapCtl }) {
-  const s = useMemo(() => mvpStats(ctl.data), [ctl.data])
-  const mvp = useMemo(
-    () =>
-      features(ctl.data, 'mvp')
-        .filter((f) => f.fields.status !== 'cut')
-        .sort((a, b) => effortPoints(b.fields.effort) - effortPoints(a.fields.effort)),
-    [ctl.data]
-  )
-  const budget = s.budget ?? 0
-  const scale = Math.max(s.points, budget, 1)
-  const ratio = budget ? s.points / budget : 0
-  const tone = !budget ? '' : ratio > 1 ? 'is-over' : ratio > 0.85 ? 'is-tight' : 'is-ok'
-  const progress = s.total ? s.done / s.total : 0
-  const statusColor = (v: unknown): string => FEATURE_STATUS.find((o) => o.value === v)?.color ?? 'var(--text-faint)'
-
+/** A sum rule as a budget bar with an editable limit. */
+function Budget({ ctl, rule, check }: { ctl: FormMapCtl; rule: Extract<CheckRule, { type: 'sum' }>; check?: CoachCheck }) {
+  const value = check?.sum?.value ?? 0
+  const max = rule.max ?? 0
+  const scale = Math.max(value, max, 1)
+  const ratio = max ? value / max : 0
+  const tone = !max ? '' : ratio > 1 ? 'is-over' : ratio > 0.85 ? 'is-tight' : 'is-ok'
+  const unit = rule.unit ?? ''
+  const setMax = (v: number | undefined): void => setMeta(ctl, { checks: (ctl.meta.checks ?? []).map((r) => (r.id === rule.id ? ({ ...r, max: v } as CheckRule) : r)) }, `budget:${rule.id}`)
   return (
     <div className="fm-coach-card">
       <div className="fm-coach-row">
-        <span className="fm-coach-label">MVP budget</span>
+        <span className="fm-coach-label">{rule.label} budget</span>
         <span className={`fm-coach-points ${tone}`}>
-          <b>{s.points}</b> /
+          <b>{value}</b> /
         </span>
         <input
           className="input fm-i-num fm-coach-budget"
           type="number"
           min={0}
-          value={s.budget ?? ''}
+          value={rule.max ?? ''}
           placeholder="—"
-          title="Effort budget in points (XS=1 S=2 M=3 L=5 XL=8)"
-          onChange={(e) => setMeta(ctl, { mvpBudget: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)) }, 'budget')}
+          title={`Budget in ${unit || 'points'}`}
+          onChange={(e) => setMax(e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)))}
+          aria-label={`${rule.label} budget`}
         />
-        <span className="fm-i-muted">pts</span>
+        <span className="fm-i-muted">{unit}</span>
       </div>
-      <div className={`fm-budget ${tone}`} title={EFFORTS.map((e) => `${e.label}=${e.points}`).join(' · ')}>
-        {mvp.map((f) => {
-          const pts = effortPoints(f.fields.effort)
-          if (!pts) return null
-          return (
-            <span
-              key={f.id}
-              className="fm-budget-seg"
-              style={{ width: `${(pts / scale) * 100}%`, background: statusColor(f.fields.status) }}
-              title={`${cardTitle(f)} — ${pts} pts`}
-              onClick={() => ctl.setSelection([f.id])}
-            />
-          )
-        })}
-        {budget > 0 && <span className="fm-budget-line" style={{ left: `${(budget / scale) * 100}%` }} title={`Budget: ${budget} pts`} />}
+      <div className={`fm-budget ${tone}`}>
+        <span className="fm-budget-fill" style={{ width: `${(value / scale) * 100}%` }} />
+        {max > 0 && <span className="fm-budget-line" style={{ left: `${(max / scale) * 100}%` }} title={`Budget: ${max} ${unit}`} />}
       </div>
       <div className="fm-coach-row fm-coach-sub">
-        {!budget ? 'Set a budget to keep the MVP honest.' : ratio > 1 ? `${s.points - budget} pts over — something has to move to Later.` : `${budget - s.points} pts of room left.`}
-      </div>
-      <div className="fm-coach-row">
-        <span className="fm-coach-label">MVP progress</span>
-        <span className="fm-coach-points">
-          <b>{s.done}</b> / {s.total} done
-        </span>
-        <span className="fm-toolbar-spacer" />
-        <span className="fm-coach-pct">{Math.round(progress * 100)}%</span>
-      </div>
-      <div className="fm-progress">
-        <span style={{ width: `${progress * 100}%` }} />
+        {!max ? 'Set a budget to keep the scope honest.' : ratio > 1 ? `${value - max} ${unit} over — something has to move out.` : `${max - value} ${unit} of room left.`}
       </div>
     </div>
   )
 }
 
-function KindCounts({ ctl }: { ctl: FormMapCtl }) {
-  const counts = useMemo(() => {
-    const m = new Map<FormKind, number>()
-    for (const f of forms(ctl.data)) m.set(f.kind, (m.get(f.kind) ?? 0) + 1)
-    return m
-  }, [ctl.data])
-  const active = ctl.focusFilter?.kinds
+function TagTiles({ ctl }: { ctl: FormMapCtl }) {
+  const usage = useMemo(() => tagUsage(ctl.data), [ctl.data])
+  const tags = [...usage.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 12)
+  if (!tags.length) return null
+  const active = ctl.focusFilter?.tags
   return (
     <div className="fm-kind-grid">
-      {KIND_ORDER.map((k) => {
-        const on = active?.length === 1 && active[0] === k
+      {tags.map(([t, n]) => {
+        const on = active?.length === 1 && active[0] === t
         return (
           <button
-            key={k}
+            key={t}
             className={`fm-kind-tile${on ? ' is-active' : ''}`}
-            style={{ '--fm-chip-color': KINDS[k].color } as React.CSSProperties}
-            title={on ? 'Clear focus' : `Focus on ${KINDS[k].plural.toLowerCase()}`}
-            onClick={() => ctl.setFocusFilter(on ? null : { kinds: [k] })}
+            style={{ '--fm-chip-color': tagColor(ctl.meta, t) } as React.CSSProperties}
+            title={on ? 'Clear focus' : `Focus on #${t}`}
+            onClick={() => ctl.setFocusFilter(on ? null : { tags: [t] })}
           >
-            <span className="fm-kind-tile-emoji">{KINDS[k].emoji}</span>
-            <b>{counts.get(k) ?? 0}</b>
-            <span className="fm-kind-tile-label">{KINDS[k].plural}</span>
+            <b>{n}</b>
+            <span className="fm-kind-tile-label">#{t}</span>
           </button>
         )
       })}

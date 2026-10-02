@@ -1,4 +1,4 @@
-// Minimap: zones + cards at a glance, the current viewport, click/drag to navigate.
+// Minimap: groups + cards at a glance, the current viewport, click/drag to navigate.
 // Cards are drawn on a <canvas> (redrawn only when the cards, the dimming or the mapping change); the viewport rectangle
 // follows the camera every frame through the engine's viewport subscription, without re-rendering React.
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
@@ -6,13 +6,14 @@ import { ChevronDown, Map as MapIcon } from 'lucide-react'
 import { boundsOf, colorCss, type CanvasNode, type Rect, type Viewport } from '../../canvas/model'
 import type { EngineApi } from '../../canvas/engine'
 import { onThemeChange, resolveColor } from '@/theme/theme'
-import { KINDS, isForm, isZone, type FormNode } from '../schema'
+import { cardAccent, isForm, isGroup, isKanban, type FormMapMeta } from '../schema'
 
 const W = 176
 const H = 112
 
 interface Props {
   nodes: CanvasNode[]
+  meta: FormMapMeta
   /** viewport as of the last React render (sets the mapping; the rectangle itself follows `api` per frame) */
   vp: Viewport
   size: { w: number; h: number }
@@ -41,7 +42,7 @@ const REDRAW_MS = 100
 
 const viewOf = (vp: Viewport, size: { w: number; h: number }): Rect => ({ x: -vp.x / vp.zoom, y: -vp.y / vp.zoom, width: size.w / vp.zoom, height: size.h / vp.zoom })
 
-export default memo(function Minimap({ nodes, vp, size, api, dimmed, onNavigate }: Props) {
+export default memo(function Minimap({ nodes, meta, vp, size, api, dimmed, onNavigate }: Props) {
   const [open, setOpen] = useState(() => localStorage.getItem('cs2d3k.formmap.minimap') !== '0')
   const stageRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -62,7 +63,7 @@ export default memo(function Minimap({ nodes, vp, size, api, dimmed, onNavigate 
   }, [])
 
   const content = useMemo(() => boundsOf(nodes.filter((n) => n.type !== 'drawing')), [nodes])
-  const zoneNodes = useMemo(() => nodes.filter(isZone), [nodes])
+  const groupNodes = useMemo(() => nodes.filter(isGroup), [nodes])
   const view = viewOf(vp, size)
   const b = boundsOf(content ? [content, view] : [view])!
   const pad = Math.max(b.width, b.height) * 0.04
@@ -103,14 +104,14 @@ export default memo(function Minimap({ nodes, vp, size, api, dimmed, onNavigate 
     const { s: sc, ox, oy, world: wr } = mapRef.current
     const faint = colorOf('var(--text-faint)')
     for (const n of nodes) {
-      if (isZone(n) || n.type === 'drawing') continue
+      if (isGroup(n) || n.type === 'drawing') continue
       ctx.globalAlpha = dimmed?.has(n.id) ? 0.2 : 0.9
-      ctx.fillStyle = isForm(n) ? colorOf(KINDS[(n as FormNode).kind]?.color ?? 'var(--text-faint)') : faint
+      ctx.fillStyle = isForm(n) ? colorOf(cardAccent(n, meta) ?? 'var(--text-faint)') : isKanban(n) ? colorOf('var(--interactive-accent)') : faint
       ctx.fillRect(ox + (n.x - wr.x) * sc, oy + (n.y - wr.y) * sc, Math.max(1.5, n.width * sc), Math.max(1.5, n.height * sc))
     }
     ctx.globalAlpha = 1
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, nodes, dimmed, mapKey, redrawTick])
+  }, [open, nodes, meta, dimmed, mapKey, redrawTick])
   useEffect(() => () => clearTimeout(drawState.current.timer), [])
 
   // the viewport rectangle follows the camera every frame
@@ -172,10 +173,10 @@ export default memo(function Minimap({ nodes, vp, size, api, dimmed, onNavigate 
         }}
       >
         <svg width={W} height={H}>
-          {zoneNodes.map((z) => (
+          {groupNodes.map((z) => (
             <rect
               key={z.id}
-              className="fm-minimap-zone"
+              className="fm-minimap-group"
               x={tx(z.x)}
               y={ty(z.y)}
               width={z.width * s}

@@ -1,84 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import {
-  alignTargets,
-  cardsInZone,
-  centerIn,
-  childKind,
-  distributeTargets,
-  findFree,
-  formsOf,
-  inferRelation,
-  parentEdge,
-  simplify,
-  smoothPath,
-  tidyZone,
-  zoneAtPoint,
-  ZONE_HEADER
-} from '@/views/formmap/map/logic'
+import { alignTargets, cardsInGroup, centerIn, distributeTargets, findFree, formsOf, groupAtPoint, parentEdge, simplify, smoothPath, tidyGroup } from '@/views/formmap/map/logic'
+import { GROUP_TOP } from '@/views/formmap/layout'
 import { intersects, type CanvasNode } from '@/views/canvas/model'
-import { KIND_ORDER } from '@/views/formmap/schema'
-import { card, doc, edge, zone } from '../fixtures'
+import { card, doc, edge, group } from '../fixtures'
 
 const rect = (id: string, x: number, y: number, width: number, height: number): CanvasNode => ({ id, type: 'text', x, y, width, height })
 
-describe('formmap/map/logic relations', () => {
-  it('inferRelation defaults to relates when either kind is unknown', () => {
-    expect(inferRelation(undefined, 'goal')).toBe('relates')
-    expect(inferRelation('feature', undefined)).toBe('relates')
-  })
-
-  it('inferRelation: ideas refine whatever they connect to', () => {
-    for (const to of KIND_ORDER) expect(inferRelation('idea', to)).toBe('refines')
-  })
-
-  it('inferRelation: features and approaches serve goals, and goals serve bigger goals', () => {
-    expect(inferRelation('feature', 'goal')).toBe('serves')
-    expect(inferRelation('approach', 'goal')).toBe('serves')
-    expect(inferRelation('goal', 'goal')).toBe('serves')
-  })
-
-  it('inferRelation: anything but a principle is motivated "because" of a principle', () => {
-    for (const from of ['feature', 'approach', 'goal', 'question', 'note'] as const) expect(inferRelation(from, 'principle')).toBe('because')
-    expect(inferRelation('principle', 'principle')).toBe('relates')
-  })
-
-  it('inferRelation: features depend on features and approaches; approaches on approaches', () => {
-    expect(inferRelation('feature', 'feature')).toBe('depends')
-    expect(inferRelation('feature', 'approach')).toBe('depends')
-    expect(inferRelation('approach', 'approach')).toBe('depends')
-  })
-
-  it('inferRelation: other pairs only relate', () => {
-    expect(inferRelation('question', 'feature')).toBe('relates')
-    expect(inferRelation('note', 'goal')).toBe('relates')
-    expect(inferRelation('goal', 'feature')).toBe('relates')
-    expect(inferRelation('approach', 'feature')).toBe('relates')
-  })
-
-  it('childKind: a Tab child is the kind that naturally hangs under the parent', () => {
-    expect(childKind('goal')).toBe('feature')
-    expect(childKind('principle')).toBe('approach')
-    expect(childKind('approach')).toBe('feature')
-    expect(childKind('question')).toBe('idea')
-    for (const k of ['idea', 'feature', 'note'] as const) expect(childKind(k)).toBe(k)
-  })
-
+describe('formmap/map/logic mind-map parents', () => {
   it('parentEdge is the first outgoing upstream relation to another form card', () => {
     const d = doc(
-      [card('f', 'feature'), card('g', 'goal'), card('p', 'principle'), card('n', 'note'), rect('t', 0, 0, 10, 10), zone('z', { x: 0, y: 0, width: 10, height: 10 })],
+      [card('f'), card('g'), card('p'), card('n'), rect('t', 0, 0, 10, 10), group('z', { x: 0, y: 0, width: 10, height: 10 })],
       [edge('f', 'n', 'relates'), edge('f', 't', 'serves'), edge('f', 'z', 'serves'), edge('p', 'f', 'because'), edge('f', 'g', 'serves'), edge('f', 'p', 'because')]
     )
     expect(parentEdge(d, 'f')?.id).toBe('f->g')
     expect(parentEdge(d, 'g')).toBeNull()
     expect(parentEdge(d, 'n')).toBeNull()
     // untyped edges count as relates
-    expect(parentEdge(doc([card('a', 'feature'), card('b', 'goal')], [edge('a', 'b')]), 'a')).toBeNull()
+    expect(parentEdge(doc([card('a'), card('b')], [edge('a', 'b')]), 'a')).toBeNull()
   })
 })
 
-describe('formmap/map/logic zones', () => {
-  const big = zone('big', { x: 0, y: 0, width: 1000, height: 1000 })
-  const small = zone('small', { x: 100, y: 100, width: 200, height: 200 })
+describe('formmap/map/logic groups', () => {
+  const big = group('big', { x: 0, y: 0, width: 1000, height: 1000 })
+  const small = group('small', { x: 100, y: 100, width: 200, height: 200 })
 
   it('centerIn checks the center of the rect, borders inclusive', () => {
     expect(centerIn(big, { x: 950, y: 950, width: 100, height: 100 })).toBe(true)
@@ -86,26 +30,26 @@ describe('formmap/map/logic zones', () => {
     expect(centerIn(big, { x: -10, y: -10, width: 20, height: 20 })).toBe(true)
   })
 
-  it('zoneAtPoint returns the smallest zone containing the point', () => {
+  it('groupAtPoint returns the smallest group containing the point', () => {
     const d = doc([small, big])
-    expect(zoneAtPoint(d, { x: 150, y: 150 })?.id).toBe('small')
-    expect(zoneAtPoint(d, { x: 500, y: 500 })?.id).toBe('big')
-    expect(zoneAtPoint(d, { x: -1, y: 0 })).toBeNull()
+    expect(groupAtPoint(d, { x: 150, y: 150 })?.id).toBe('small')
+    expect(groupAtPoint(d, { x: 500, y: 500 })?.id).toBe('big')
+    expect(groupAtPoint(d, { x: -1, y: 0 })).toBeNull()
   })
 
-  it('cardsInZone returns cards centered in the zone but not in a smaller nested zone', () => {
+  it('cardsInGroup returns the nodes whose innermost group it is', () => {
     const d = doc([
       big,
       small,
-      card('inBig', 'idea', { x: 500, y: 500, width: 100, height: 100 }),
-      card('inSmall', 'idea', { x: 150, y: 150, width: 50, height: 50 }),
+      card('inBig', { x: 500, y: 500, width: 100, height: 100 }),
+      card('inSmall', { x: 150, y: 150, width: 50, height: 50 }),
       rect('text', 600, 600, 50, 50),
       { id: 'group', type: 'group', x: 10, y: 600, width: 50, height: 50 },
       { id: 'pen', type: 'drawing', x: 10, y: 700, width: 50, height: 50, points: [] },
-      card('outside', 'idea', { x: 2000, y: 0 })
+      card('outside', { x: 2000, y: 0 })
     ])
-    expect(cardsInZone(d, big).map((n) => n.id)).toEqual(['inBig', 'text'])
-    expect(cardsInZone(d, small).map((n) => n.id)).toEqual(['inSmall'])
+    expect(cardsInGroup(d, big).map((n) => n.id)).toEqual(['inBig', 'text'])
+    expect(cardsInGroup(d, small).map((n) => n.id)).toEqual(['inSmall'])
   })
 })
 
@@ -113,11 +57,11 @@ describe('formmap/map/logic findFree', () => {
   const r = { x: 0, y: 0, width: 200, height: 100 }
 
   it('keeps the requested rect when it is free', () => {
-    expect(findFree(doc([card('far', 'idea', { x: 2000, y: 2000 })]), r)).toEqual(r)
+    expect(findFree(doc([card('far', { x: 2000, y: 2000 })]), r)).toEqual(r)
   })
 
   it('moves down first when the spot is taken, keeping clear of the blocker', () => {
-    const blocker = card('b', 'idea', { ...r })
+    const blocker = card('b', { ...r })
     const out = findFree(doc([blocker]), r)
     expect(out.x).toBe(0)
     expect(out.y).toBeGreaterThan(r.y)
@@ -125,18 +69,18 @@ describe('formmap/map/logic findFree', () => {
     expect(out).toMatchObject({ width: 200, height: 100 })
   })
 
-  it('ignores zones, groups, drawings and the ignored ids', () => {
+  it('ignores groups, drawings and the ignored ids', () => {
     const d = doc([
-      zone('z', { x: -100, y: -100, width: 1000, height: 1000 }),
+      group('z', { x: -100, y: -100, width: 1000, height: 1000 }),
       { id: 'g', type: 'group', ...r },
       { id: 'p', type: 'drawing', ...r, points: [] },
-      card('self', 'idea', { ...r })
+      card('self', { ...r })
     ])
     expect(findFree(d, r, new Set(['self']))).toEqual(r)
   })
 
   it('never overlaps any card even in a crowded column', () => {
-    const cards = Array.from({ length: 6 }, (_, i) => card(`c${i}`, 'idea', { x: 0, y: i * 60, width: 200, height: 100 }))
+    const cards = Array.from({ length: 6 }, (_, i) => card(`c${i}`, { x: 0, y: i * 60, width: 200, height: 100 }))
     const out = findFree(doc(cards), r)
     for (const c of cards) expect(intersects(out, c)).toBe(false)
   })
@@ -187,43 +131,43 @@ describe('formmap/map/logic align + distribute', () => {
   })
 })
 
-describe('formmap/map/logic tidyZone', () => {
-  it('leaves an empty zone as it is', () => {
-    const z = zone('z', { x: 0, y: 0, width: 700, height: 300 })
-    expect(tidyZone(doc([z]), z)).toEqual({ targets: new Map(), height: 300 })
+describe('formmap/map/logic tidyGroup', () => {
+  it('leaves an empty group as it is', () => {
+    const z = group('z', { x: 0, y: 0, width: 700, height: 300 })
+    expect(tidyGroup(doc([z]), z)).toEqual({ targets: new Map(), height: 300 })
   })
 
   it('lays the cards out in a grid below the header, in reading order', () => {
-    const z = zone('z', { x: 0, y: 0, width: 700, height: 600 })
+    const z = group('z', { x: 0, y: 0, width: 700, height: 600 })
     const d = doc([
       z,
-      card('c', 'idea', { x: 400, y: 300, width: 200, height: 100 }),
-      card('a', 'idea', { x: 50, y: 100, width: 200, height: 100 }),
-      card('b', 'idea', { x: 300, y: 110, width: 200, height: 100 }), // same row as a (within 40px)
-      card('d', 'idea', { x: 10, y: 450, width: 200, height: 100 })
+      card('c', { x: 400, y: 300, width: 200, height: 100 }),
+      card('a', { x: 50, y: 100, width: 200, height: 100 }),
+      card('b', { x: 300, y: 110, width: 200, height: 100 }), // same row as a (within 40px)
+      card('d', { x: 10, y: 450, width: 200, height: 100 })
     ])
-    const { targets, height } = tidyZone(d, z)
+    const { targets, height } = tidyGroup(d, z)
     expect([...targets.keys()]).toEqual(['a', 'b', 'c', 'd'])
-    expect(Object.fromEntries(targets)).toEqual({ a: { x: 30, y: 70 }, b: { x: 250, y: 70 }, c: { x: 470, y: 70 }, d: { x: 30, y: 190 } })
+    expect(Object.fromEntries(targets)).toEqual({ a: { x: 30, y: 40 }, b: { x: 250, y: 40 }, c: { x: 470, y: 40 }, d: { x: 30, y: 160 } })
     expect(height).toBe(600)
-    for (const p of targets.values()) expect(p.y).toBeGreaterThanOrEqual(z.y + ZONE_HEADER)
+    for (const p of targets.values()) expect(p.y).toBeGreaterThanOrEqual(z.y + GROUP_TOP)
   })
 
-  it('grows the zone when the cards need more height, and never shrinks it', () => {
-    const z = zone('z', { x: 0, y: 0, width: 300, height: 200 })
-    const d = doc([z, card('a', 'idea', { x: 10, y: 10, width: 200, height: 40 }), card('b', 'idea', { x: 10, y: 120, width: 200, height: 40 }), card('c', 'idea', { x: 10, y: 150, width: 200, height: 40 })])
-    const { targets, height } = tidyZone(d, z)
+  it('grows the group when the cards need more height, and never shrinks it', () => {
+    const z = group('z', { x: 0, y: 0, width: 300, height: 200 })
+    const d = doc([z, card('a', { x: 10, y: 10, width: 200, height: 40 }), card('b', { x: 10, y: 120, width: 200, height: 40 }), card('c', { x: 10, y: 150, width: 200, height: 40 })])
+    const { targets, height } = tidyGroup(d, z)
     expect(targets.size).toBe(3) // one column
     const last = Math.max(...[...targets.values()].map((p) => p.y)) + 40
     expect(height).toBeGreaterThan(200)
     expect(height).toBeGreaterThanOrEqual(last)
   })
 
-  it('does not touch cards that belong to a nested zone', () => {
-    const outer = zone('outer', { x: 0, y: 0, width: 1000, height: 1000 })
-    const inner = zone('inner', { x: 500, y: 500, width: 400, height: 400 })
-    const d = doc([outer, inner, card('o', 'idea', { x: 10, y: 10 }), card('i', 'idea', { x: 600, y: 600 })])
-    expect([...tidyZone(d, outer).targets.keys()]).toEqual(['o'])
+  it('does not touch cards that belong to a nested group', () => {
+    const outer = group('outer', { x: 0, y: 0, width: 1000, height: 1000 })
+    const inner = group('inner', { x: 500, y: 500, width: 400, height: 400 })
+    const d = doc([outer, inner, card('o', { x: 10, y: 10 }), card('i', { x: 600, y: 600 })])
+    expect([...tidyGroup(d, outer).targets.keys()]).toEqual(['o'])
   })
 })
 
@@ -257,6 +201,6 @@ describe('formmap/map/logic pen strokes', () => {
   })
 
   it('formsOf keeps only form cards', () => {
-    expect(formsOf([card('a', 'idea'), rect('t', 0, 0, 1, 1), zone('z', { x: 0, y: 0, width: 1, height: 1 })]).map((n) => n.id)).toEqual(['a'])
+    expect(formsOf([card('a'), rect('t', 0, 0, 1, 1), group('z', { x: 0, y: 0, width: 1, height: 1 })]).map((n) => n.id)).toEqual(['a'])
   })
 })

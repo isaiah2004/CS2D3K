@@ -522,6 +522,33 @@ test.describe('canvas @basic', () => {
     })
   })
 
+  test.describe('form-map data in a plain canvas', () => {
+    const mixed = {
+      nodes: [
+        { id: 'g', type: 'group', label: 'Doing', locked: true, assign: { status: 'doing' }, emoji: '⚡', x: 0, y: 0, width: 500, height: 400 },
+        { id: 't', type: 'text', text: 'inside', x: 40, y: 60, width: 200, height: 60 },
+        { id: 'k', type: 'kanban', title: 'Board', columns: [{ id: 'c', title: 'To do', cards: [{ id: 'x', title: 'X' }] }], x: 700, y: 0, width: 400, height: 300 }
+      ],
+      edges: []
+    }
+    test.use({ vault: { source: 'sample', files: { 'Mixed.canvas': JSON.stringify(mixed, null, '\t') } } })
+    test('stays a plain canvas: form-map extras are kept but not interpreted (no lock, no kanban node)', async ({ app }) => {
+      const c = await openCanvas(app, 'Mixed.canvas')
+      await expect(c.node('k')).toContainText('Unsupported node type “kanban”')
+      await expect(c.root().locator('.fm-group, .fm-kb, .fm-toolbar')).toHaveCount(0)
+      // the form-map lock doesn't apply on a .canvas: the group moves and carries its card
+      const lb = await c.nodeBox('g', '.canvas-group-label')
+      await c.drag(center(lb), { x: center(lb).x + 60, y: center(lb).y + 40 })
+      await c.expectData((d) => d.nodes.find((n) => n.id === 'g')!.x !== 0, 'group moved')
+      const d = c.data()
+      const g = d.nodes.find((n) => n.id === 'g')!
+      expect(g).toMatchObject({ locked: true, assign: { status: 'doing' }, emoji: '⚡' })
+      expect(d.nodes.find((n) => n.id === 't')!.x - 40).toBe(g.x)
+      expect(d.nodes.find((n) => n.id === 'k')).toMatchObject({ type: 'kanban', columns: mixed.nodes[2].columns })
+      expect(d.formmap).toBeUndefined()
+    })
+  })
+
   test('renders in dark and light themes', async ({ app }) => {
     const c = await openCanvas(app)
     const lum = async (): Promise<{ bg: number; card: number }> =>

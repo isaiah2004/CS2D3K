@@ -1,0 +1,101 @@
+/* Tag chips, read-only field value chips and field type icons */
+.fm-tag {
+  --fm-chip-color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  border: 1px solid color-mix(in srgb, var(--fm-chip-color) 35%, transparent);
+  background: color-mix(in srgb, var(--fm-chip-color) 13%, transparent);
+  color: color-mix(in srgb, var(--fm-chip-color) 72%, var(--text-normal));
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+}
+.fm-tag.is-compact {
+  height: 18px;
+  padding: 0 6px;
+  font-size: 10.5px;
+}
+.fm-tag-hash {
+  opacity: 0.6;
+}
+.fm-tag.is-clickable {
+  cursor: pointer;
+}
+.fm-tag.is-clickable:hover {
+  background: color-mix(in srgb, var(--fm-chip-color) 22%, transparent);
+}
+.fm-tag.is-active {
+  border-color: var(--fm-chip-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--fm-chip-color) 30%, transparent);
+}
+.fm-tag-x {
+  margin-left: 4px;
+  margin-right: -2px;
+  padding: 0 2px;
+  border-radius: 50%;
+  opacity: 0.55;
+  cursor: pointer;
+  font-weight: 700;
+}
+.fm-tag-x:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--fm-chip-color) 25%, transparent);
+}
+
+.fm-vchip {
+  --fm-chip-color: var(--text-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--fm-chip-color) 30%, transparent);
+  background: color-mix(in srgb, var(--fm-chip-color) 8%, transparent);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+}
+.fm-vchip-key {
+  color: var(--text-faint);
+}
+.fm-vchip-val {
+  color: var(--text-normal);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fm-vchip.is-rating {
+  padding: 0 4px;
+  border-color: color-mix(in srgb, var(--color-yellow) 30%, transparent);
+  background: color-mix(in srgb, var(--color-yellow) 8%, transparent);
+}
+.fm-vchip.is-check,
+.fm-vchip.is-checklist.is-complete {
+  --fm-chip-color: var(--color-green);
+  color: color-mix(in srgb, var(--color-green) 75%, var(--text-normal));
+}
+.fm-type-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 2px;
+  border-radius: 4px;
+  background: var(--background-modifier-hover);
+  color: var(--text-faint);
+  font-size: 9.5px;
+  font-weight: 700;
+  font-family: var(--font-monospace);
+  line-height: 1;
+}

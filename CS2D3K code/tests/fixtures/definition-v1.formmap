@@ -1,0 +1,935 @@
+{
+	"formmap": {
+		"version": 1,
+		"title": "CS2D3K Definition",
+		"template": "product-definition",
+		"mvpBudget": 24
+	},
+	"nodes": [
+		{
+			"id": "a4c123b1612dd272",
+			"type": "zone",
+			"label": "Core idea",
+			"emoji": "🌱",
+			"prompt": "One or two sentences: what is this product and why must it exist?",
+			"x": 0,
+			"y": 0,
+			"width": 2440,
+			"height": 340,
+			"color": "3",
+			"defaultKind": "note",
+			"locked": true,
+			"order": 1
+		},
+		{
+			"id": "d1371c17149d4395",
+			"type": "zone",
+			"label": "Philosophy",
+			"emoji": "🧭",
+			"prompt": "The beliefs that drive every decision. If a feature fights a principle, the principle wins.",
+			"x": 0,
+			"y": 420,
+			"width": 760,
+			"height": 1000,
+			"color": "6",
+			"defaultKind": "principle",
+			"locked": true,
+			"order": 2
+		},
+		{
+			"id": "36b3216fdaeeb975",
+			"type": "zone",
+			"label": "Engineering approach",
+			"emoji": "🛠️",
+			"prompt": "How we build it: stack, process and the key technical decisions — each with a rationale.",
+			"x": 840,
+			"y": 420,
+			"width": 760,
+			"height": 1000,
+			"color": "5",
+			"defaultKind": "approach",
+			"locked": true,
+			"order": 3
+		},
+		{
+			"id": "729fae923d5a4fd1",
+			"type": "zone",
+			"label": "Final goal",
+			"emoji": "🎯",
+			"prompt": "What does success look like? Make it measurable.",
+			"x": 1680,
+			"y": 420,
+			"width": 760,
+			"height": 1000,
+			"color": "1",
+			"defaultKind": "goal",
+			"locked": true,
+			"order": 4,
+			"assign": {
+				"horizon": "final"
+			}
+		},
+		{
+			"id": "2aabfe228f219e9c",
+			"type": "zone",
+			"label": "Initial features (MVP)",
+			"emoji": "🚀",
+			"prompt": "The smallest set of features that proves the core idea. Every one should serve a goal.",
+			"x": 0,
+			"y": 1500,
+			"width": 760,
+			"height": 820,
+			"color": "4",
+			"defaultKind": "feature",
+			"locked": true,
+			"order": 5,
+			"assign": {
+				"phase": "mvp"
+			}
+		},
+		{
+			"id": "b0eb53f16947ccf2",
+			"type": "zone",
+			"label": "Later features",
+			"emoji": "🔭",
+			"prompt": "Good ideas that are not needed to prove the core idea. Park them here guilt-free.",
+			"x": 840,
+			"y": 1500,
+			"width": 760,
+			"height": 820,
+			"color": "5",
+			"defaultKind": "feature",
+			"locked": true,
+			"order": 6,
+			"assign": {
+				"phase": "later"
+			}
+		},
+		{
+			"id": "5ec84d8dbc742547",
+			"type": "zone",
+			"label": "Open questions",
+			"emoji": "❓",
+			"prompt": "Unknowns and risks. Decide them, or explicitly park them.",
+			"x": 1680,
+			"y": 1500,
+			"width": 760,
+			"height": 820,
+			"color": "2",
+			"defaultKind": "question",
+			"locked": true,
+			"order": 7
+		},
+		{
+			"id": "70f58904dba41ecc",
+			"type": "zone",
+			"label": "Idea inbox",
+			"emoji": "📥",
+			"prompt": "Dump raw ideas here. Drag them into a zone when they are ready.",
+			"x": -500,
+			"y": 420,
+			"width": 420,
+			"height": 1900,
+			"color": "3",
+			"defaultKind": "idea",
+			"locked": true
+		},
+		{
+			"id": "cc3fc1626e53a130",
+			"type": "form",
+			"kind": "note",
+			"title": "CS2D3K — Constrained State Space Documentation Defined Development Kit",
+			"text": "Pronounced *CS2-Deck*. The new way to write software in the AI era: bring out **every ounce of ability** in AI models while building **Secure, Scalable and Satisfying** software — in that order.\n\nDocumentation defines the project; agents do the mundane. And we bring the **fun** back into software development.",
+			"fields": {},
+			"x": 40,
+			"y": 90,
+			"width": 1560,
+			"height": 200
+		},
+		{
+			"id": "43b026c48bbf33fe",
+			"type": "form",
+			"kind": "principle",
+			"title": "1. Don't read all the agent's code",
+			"text": "There is little to no point reading all the code your agent writes.",
+			"fields": {
+				"strength": 4
+			},
+			"x": 30,
+			"y": 500,
+			"width": 340,
+			"height": 130
+		},
+		{
+			"id": "ff9243a8f506b409",
+			"type": "form",
+			"kind": "principle",
+			"title": "2. Don't reinvent the wheel",
+			"text": "Never make an agent write code it could have copy-pasted or paraphrased.",
+			"fields": {
+				"strength": 4
+			},
+			"x": 390,
+			"y": 500,
+			"width": 340,
+			"height": 130
+		},
+		{
+			"id": "28b5b7a767c76fb0",
+			"type": "form",
+			"kind": "principle",
+			"title": "3. Do nearly all the thinking",
+			"text": "Agents act as your muscle memory: they do the mundane.",
+			"fields": {
+				"strength": 5
+			},
+			"x": 30,
+			"y": 650,
+			"width": 340,
+			"height": 130
+		},
+		{
+			"id": "08f86bebb2737f6a",
+			"type": "form",
+			"kind": "principle",
+			"title": "4. Parallelize heavily",
+			"text": "Get used to heavy parallelization of work.",
+			"fields": {
+				"strength": 4
+			},
+			"x": 390,
+			"y": 650,
+			"width": 340,
+			"height": 130
+		},
+		{
+			"id": "6f0fb23c6f5da2ce",
+			"type": "form",
+			"kind": "principle",
+			"title": "5. Over-test, over-critique, over-validate",
+			"text": "",
+			"fields": {
+				"strength": 4
+			},
+			"x": 30,
+			"y": 800,
+			"width": 340,
+			"height": 130
+		},
+		{
+			"id": "c255404e4fb44003",
+			"type": "form",
+			"kind": "principle",
+			"title": "6. Prompts are code",
+			"text": "Prompt quality is everything. Write prompts as though they were code.",
+			"fields": {
+				"strength": 5
+			},
+			"x": 390,
+			"y": 800,
+			"width": 340,
+			"height": 130
+		},
+		{
+			"id": "4d6608697a8d41be",
+			"type": "form",
+			"kind": "principle",
+			"title": "7. Test every scenario end-to-end",
+			"text": "Full end-to-end testing of every possible scenario, plus agentic testing.",
+			"fields": {
+				"strength": 4
+			},
+			"x": 30,
+			"y": 950,
+			"width": 340,
+			"height": 130
+		},
+		{
+			"id": "d440e50454f31af3",
+			"type": "form",
+			"kind": "principle",
+			"title": "8. Ultra-granular logging",
+			"text": "Easy-to-toggle, ultra-granular logging.",
+			"fields": {
+				"strength": 4
+			},
+			"x": 390,
+			"y": 950,
+			"width": 340,
+			"height": 130
+		},
+		{
+			"id": "176813e02ea68ef7",
+			"type": "form",
+			"kind": "principle",
+			"title": "9. Multiple passes",
+			"text": "Write the code in multiple passes, focusing on a subset of requirements at a time.",
+			"fields": {
+				"strength": 4
+			},
+			"x": 30,
+			"y": 1100,
+			"width": 340,
+			"height": 130
+		},
+		{
+			"id": "86e4d3cea27d2693",
+			"type": "form",
+			"kind": "principle",
+			"title": "10. Validate prompts, not code",
+			"text": "Validate your prompts so you don't have to validate your code.",
+			"fields": {
+				"strength": 5
+			},
+			"x": 390,
+			"y": 1100,
+			"width": 340,
+			"height": 130
+		},
+		{
+			"id": "4b484e73cf575dca",
+			"type": "form",
+			"kind": "principle",
+			"title": "11. Sonnet executes, Opus/Fable orchestrate",
+			"text": "Plans must be executable by Sonnet; Opus and Fable do the orchestration and checks.",
+			"fields": {
+				"strength": 4
+			},
+			"x": 30,
+			"y": 1250,
+			"width": 340,
+			"height": 130
+		},
+		{
+			"id": "d6ba2b0aee0ca923",
+			"type": "form",
+			"kind": "approach",
+			"title": "Documentation-defined development",
+			"text": "Every project = Definition → Architecture → Code. Docs are the source of truth; code is derived from them.",
+			"fields": {
+				"status": "accepted",
+				"rationale": "Every project = Definition → Architecture → Code. Docs are the source of truth; code is derived from them."
+			},
+			"x": 870,
+			"y": 500,
+			"width": 340,
+			"height": 260
+		},
+		{
+			"id": "ad84173581569969",
+			"type": "form",
+			"kind": "approach",
+			"title": "Constrained state space",
+			"text": "Each pass may only change one layer (definition, architecture or code), keeping agent work predictable.",
+			"fields": {
+				"status": "proposed",
+				"rationale": "Each pass may only change one layer (definition, architecture or code), keeping agent work predictable."
+			},
+			"x": 1230,
+			"y": 500,
+			"width": 340,
+			"height": 260
+		},
+		{
+			"id": "12c9791e558e08ba",
+			"type": "form",
+			"kind": "approach",
+			"title": "Model tiering",
+			"text": "Sonnet executes plans; Opus/Fable orchestrate, review and check.",
+			"fields": {
+				"status": "accepted",
+				"rationale": "Sonnet executes plans; Opus/Fable orchestrate, review and check."
+			},
+			"x": 870,
+			"y": 790,
+			"width": 340,
+			"height": 260
+		},
+		{
+			"id": "2824c1c099724caf",
+			"type": "form",
+			"kind": "approach",
+			"title": "Parallel task queue",
+			"text": "Refined ideas are queued and executed in parallel; each first lands as a reviewable artifact.",
+			"fields": {
+				"status": "accepted",
+				"rationale": "Refined ideas are queued and executed in parallel; each first lands as a reviewable artifact."
+			},
+			"x": 1230,
+			"y": 790,
+			"width": 340,
+			"height": 260
+		},
+		{
+			"id": "7efc2f91624a8940",
+			"type": "form",
+			"kind": "approach",
+			"title": "Validate everything",
+			"text": "E2E + agentic tests and toggleable granular logs on every change.",
+			"fields": {
+				"status": "accepted",
+				"rationale": "E2E + agentic tests and toggleable granular logs on every change."
+			},
+			"x": 870,
+			"y": 1080,
+			"width": 340,
+			"height": 260
+		},
+		{
+			"id": "bca3a0aac36098b2",
+			"type": "form",
+			"kind": "approach",
+			"title": "Multi-pass implementation",
+			"text": "Build in passes, each focused on a subset of requirements.",
+			"fields": {
+				"status": "proposed",
+				"rationale": "Build in passes, each focused on a subset of requirements."
+			},
+			"x": 1230,
+			"y": 1080,
+			"width": 340,
+			"height": 260
+		},
+		{
+			"id": "6bd0c621de49f145",
+			"type": "form",
+			"kind": "goal",
+			"title": "Secure, Scalable, Satisfying — in that order",
+			"text": "Every shipped project passes security review, scales, and delights its users.",
+			"fields": {
+				"horizon": "final",
+				"metric": "Security issues found after release → 0"
+			},
+			"x": 1720,
+			"y": 500,
+			"width": 680,
+			"height": 260
+		},
+		{
+			"id": "fda9988c79fc3552",
+			"type": "form",
+			"kind": "goal",
+			"title": "Every ounce of AI ability",
+			"text": "Agents do the mundane; humans do the thinking.",
+			"fields": {
+				"horizon": "final",
+				"metric": "% of code written by agents with no manual rewrite"
+			},
+			"x": 1720,
+			"y": 800,
+			"width": 680,
+			"height": 260
+		},
+		{
+			"id": "6f7eaed46725a2a7",
+			"type": "form",
+			"kind": "goal",
+			"title": "Bring the fun back",
+			"text": "Developers enjoy building again: less toil, more creation.",
+			"fields": {
+				"horizon": "final",
+				"metric": "Developers choose to open CS2D3K every day"
+			},
+			"x": 1720,
+			"y": 1100,
+			"width": 680,
+			"height": 260
+		},
+		{
+			"id": "b860dcd6c8a1f8b4",
+			"type": "form",
+			"kind": "feature",
+			"title": "Idea panel",
+			"text": "Dump ideas and work on them in the context of the project; drafts live here; queue tasks.",
+			"fields": {
+				"phase": "mvp",
+				"priority": "must",
+				"effort": "m",
+				"status": "planned",
+				"fun": 5
+			},
+			"x": 30,
+			"y": 1580,
+			"width": 340,
+			"height": 220,
+			"votes": 7
+		},
+		{
+			"id": "2cee737443e21047",
+			"type": "form",
+			"kind": "feature",
+			"title": "Task queue panel",
+			"text": "Refined ideas queued for execution; first implemented as artifacts for review, then applied Definition → Architecture → Code.",
+			"fields": {
+				"phase": "mvp",
+				"priority": "must",
+				"effort": "l",
+				"status": "planned",
+				"fun": 4
+			},
+			"x": 390,
+			"y": 1580,
+			"width": 340,
+			"height": 220,
+			"votes": 6
+		},
+		{
+			"id": "87db7f1adbc60926",
+			"type": "form",
+			"kind": "feature",
+			"title": "Dev agent panel",
+			"text": "Manage agents, chats and subagents.",
+			"fields": {
+				"phase": "mvp",
+				"priority": "must",
+				"effort": "l",
+				"status": "planned",
+				"fun": 3
+			},
+			"x": 30,
+			"y": 1820,
+			"width": 340,
+			"height": 220,
+			"votes": 4
+		},
+		{
+			"id": "4c1604d115cea325",
+			"type": "form",
+			"kind": "feature",
+			"title": "Review panel",
+			"text": "Questions from running tasks + review proposals: UI mockups, architecture mockups, task-queue updates.",
+			"fields": {
+				"phase": "mvp",
+				"priority": "must",
+				"effort": "m",
+				"status": "planned",
+				"fun": 3
+			},
+			"x": 390,
+			"y": 1820,
+			"width": 340,
+			"height": 220,
+			"votes": 5
+		},
+		{
+			"id": "bd36cb9d21f6be6a",
+			"type": "form",
+			"kind": "feature",
+			"title": "Project workspace",
+			"text": "Each project has a Definition, an Architecture and Code, plus its own context level.",
+			"fields": {
+				"phase": "mvp",
+				"priority": "must",
+				"effort": "m",
+				"status": "planned",
+				"fun": 3
+			},
+			"x": 30,
+			"y": 2060,
+			"width": 340,
+			"height": 220,
+			"votes": 3
+		},
+		{
+			"id": "8df4f50947aaeb26",
+			"type": "form",
+			"kind": "feature",
+			"title": "Form-map definition board",
+			"text": "Decide the product visually: philosophy → approach → goals → features. Fun by design.",
+			"fields": {
+				"phase": "mvp",
+				"priority": "should",
+				"effort": "s",
+				"status": "building",
+				"fun": 5
+			},
+			"x": 390,
+			"y": 2060,
+			"width": 340,
+			"height": 220,
+			"votes": 8
+		},
+		{
+			"id": "160adb59261ff2d3",
+			"type": "form",
+			"kind": "feature",
+			"title": "Automated server bug detection",
+			"text": "Detect server bugs automatically and propose fixes in the review panel.",
+			"fields": {
+				"phase": "later",
+				"priority": "could",
+				"effort": "xl",
+				"status": "idea",
+				"fun": 3
+			},
+			"x": 870,
+			"y": 1580,
+			"width": 340,
+			"height": 220
+		},
+		{
+			"id": "b6cc60d5d32cbe54",
+			"type": "form",
+			"kind": "feature",
+			"title": "Plan screen",
+			"text": "The logical structure of a project at a glance (doc still unfinished).",
+			"fields": {
+				"phase": "later",
+				"priority": "should",
+				"effort": "l",
+				"status": "idea",
+				"fun": 4
+			},
+			"x": 1230,
+			"y": 1580,
+			"width": 340,
+			"height": 220
+		},
+		{
+			"id": "6941fa1c257c6f56",
+			"type": "form",
+			"kind": "feature",
+			"title": "Agentic test harness",
+			"text": "Agents that explore and test the product like users.",
+			"fields": {
+				"phase": "later",
+				"priority": "should",
+				"effort": "l",
+				"status": "idea",
+				"fun": 3
+			},
+			"x": 870,
+			"y": 1820,
+			"width": 340,
+			"height": 220
+		},
+		{
+			"id": "5fc324bdb2e1142a",
+			"type": "form",
+			"kind": "feature",
+			"title": "UI mockup generation",
+			"text": "Generate UI mockups for review before building.",
+			"fields": {
+				"phase": "later",
+				"priority": "could",
+				"effort": "m",
+				"status": "idea",
+				"fun": 5
+			},
+			"x": 1230,
+			"y": 1820,
+			"width": 340,
+			"height": 220
+		},
+		{
+			"id": "5a8e48f687ab165c",
+			"type": "form",
+			"kind": "question",
+			"title": "What exactly does the Plan screen show?",
+			"text": "`Plan screen.md` stops mid-sentence: \"Here is the logical structure of the…\"",
+			"fields": {
+				"status": "open"
+			},
+			"x": 1720,
+			"y": 1580,
+			"width": 680,
+			"height": 155
+		},
+		{
+			"id": "58ac5831be38cb8c",
+			"type": "form",
+			"kind": "question",
+			"title": "How is a project's 'context level' scoped and stored?",
+			"text": "Project.md: \"A project has its own context level.\"",
+			"fields": {
+				"status": "open"
+			},
+			"x": 1720,
+			"y": 1755,
+			"width": 680,
+			"height": 155
+		},
+		{
+			"id": "b4ba2e751989a017",
+			"type": "form",
+			"kind": "question",
+			"title": "How do we keep agent cost under control?",
+			"text": "Opus/Fable orchestration and heavy parallelization can get expensive.",
+			"fields": {
+				"status": "open"
+			},
+			"x": 1720,
+			"y": 1930,
+			"width": 680,
+			"height": 155
+		},
+		{
+			"id": "49ddb14f71010b93",
+			"type": "form",
+			"kind": "question",
+			"title": "Desktop only, or also web/mobile?",
+			"text": "Belongs in Project Architecture.",
+			"fields": {
+				"status": "open"
+			},
+			"x": 1720,
+			"y": 2105,
+			"width": 680,
+			"height": 155
+		},
+		{
+			"id": "57513064d6d59291",
+			"type": "form",
+			"kind": "idea",
+			"title": "XP for merged tasks",
+			"text": "Gamify: earn XP and streaks when tasks land.",
+			"fields": {
+				"status": "raw"
+			},
+			"x": -470,
+			"y": 500,
+			"width": 360,
+			"height": 170
+		},
+		{
+			"id": "f0cde2e5738713a8",
+			"type": "form",
+			"kind": "idea",
+			"title": "Voice capture",
+			"text": "Talk ideas into the idea panel.",
+			"fields": {
+				"status": "raw"
+			},
+			"x": -470,
+			"y": 690,
+			"width": 360,
+			"height": 170
+		},
+		{
+			"id": "18d8962058765a6c",
+			"type": "form",
+			"kind": "idea",
+			"title": "Weekly 'what shipped' recap",
+			"text": "Auto-generated, celebratory changelog.",
+			"fields": {
+				"status": "raw"
+			},
+			"x": -470,
+			"y": 880,
+			"width": 360,
+			"height": 170
+		}
+	],
+	"edges": [
+		{
+			"id": "732881584d8c4fa2",
+			"fromNode": "d6ba2b0aee0ca923",
+			"toNode": "28b5b7a767c76fb0",
+			"relation": "because",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "815d2802827283e0",
+			"fromNode": "d6ba2b0aee0ca923",
+			"toNode": "86e4d3cea27d2693",
+			"relation": "because",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "e58b081006f7e3df",
+			"fromNode": "ad84173581569969",
+			"toNode": "176813e02ea68ef7",
+			"relation": "because",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "c967a64cb14028d5",
+			"fromNode": "ad84173581569969",
+			"toNode": "6f0fb23c6f5da2ce",
+			"relation": "because",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "a7196b50ac2f8670",
+			"fromNode": "12c9791e558e08ba",
+			"toNode": "4b484e73cf575dca",
+			"relation": "because",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "4941d4072014b3ce",
+			"fromNode": "2824c1c099724caf",
+			"toNode": "08f86bebb2737f6a",
+			"relation": "because",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "107f80e222f82876",
+			"fromNode": "2824c1c099724caf",
+			"toNode": "ff9243a8f506b409",
+			"relation": "because",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "f1f836f99eee3692",
+			"fromNode": "7efc2f91624a8940",
+			"toNode": "6f0fb23c6f5da2ce",
+			"relation": "because",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "f09e2e8c662248b4",
+			"fromNode": "7efc2f91624a8940",
+			"toNode": "4d6608697a8d41be",
+			"relation": "because",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "83b7ffc050fec94d",
+			"fromNode": "7efc2f91624a8940",
+			"toNode": "d440e50454f31af3",
+			"relation": "because",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "cc2bd818319478da",
+			"fromNode": "bca3a0aac36098b2",
+			"toNode": "176813e02ea68ef7",
+			"relation": "because",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "6287cced9041dff0",
+			"fromNode": "b860dcd6c8a1f8b4",
+			"toNode": "6f7eaed46725a2a7",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "1948d33296c87009",
+			"fromNode": "2cee737443e21047",
+			"toNode": "fda9988c79fc3552",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "e8a7f770d9106fd2",
+			"fromNode": "2cee737443e21047",
+			"toNode": "6bd0c621de49f145",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "f6967e7893f57fd1",
+			"fromNode": "87db7f1adbc60926",
+			"toNode": "fda9988c79fc3552",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "a65e19cbae530282",
+			"fromNode": "4c1604d115cea325",
+			"toNode": "6bd0c621de49f145",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "bf0d7c1c1e21862a",
+			"fromNode": "bd36cb9d21f6be6a",
+			"toNode": "6bd0c621de49f145",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "b8a18a8902073fec",
+			"fromNode": "bd36cb9d21f6be6a",
+			"toNode": "fda9988c79fc3552",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "c57d21fa5d328263",
+			"fromNode": "8df4f50947aaeb26",
+			"toNode": "6f7eaed46725a2a7",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "dfe574de739988b8",
+			"fromNode": "2cee737443e21047",
+			"toNode": "b860dcd6c8a1f8b4",
+			"relation": "depends",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "86e7577496a2c877",
+			"fromNode": "4c1604d115cea325",
+			"toNode": "2cee737443e21047",
+			"relation": "depends",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "3e130f7eb1973166",
+			"fromNode": "87db7f1adbc60926",
+			"toNode": "2cee737443e21047",
+			"relation": "depends",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "2b5e803b61ba4168",
+			"fromNode": "b860dcd6c8a1f8b4",
+			"toNode": "2824c1c099724caf",
+			"relation": "relates",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "c425c8d99d19bdd0",
+			"fromNode": "160adb59261ff2d3",
+			"toNode": "6bd0c621de49f145",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "014c2b54b95523cf",
+			"fromNode": "b6cc60d5d32cbe54",
+			"toNode": "fda9988c79fc3552",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "1c5cb347611a3ce9",
+			"fromNode": "6941fa1c257c6f56",
+			"toNode": "6bd0c621de49f145",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "d97dcbee500fe7ee",
+			"fromNode": "6941fa1c257c6f56",
+			"toNode": "fda9988c79fc3552",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "21c402364f9572b8",
+			"fromNode": "5fc324bdb2e1142a",
+			"toNode": "6f7eaed46725a2a7",
+			"relation": "serves",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "b7d946bf54074e32",
+			"fromNode": "5a8e48f687ab165c",
+			"toNode": "b6cc60d5d32cbe54",
+			"relation": "relates",
+			"toEnd": "arrow"
+		},
+		{
+			"id": "48c801bef750110c",
+			"fromNode": "b4ba2e751989a017",
+			"toNode": "12c9791e558e08ba",
+			"relation": "relates",
+			"toEnd": "arrow"
+		}
+	]
+}

@@ -70,10 +70,11 @@ Obsidian-like knowledge base + code workspace. Electron + React + TS.
 - [x] 45. Inspector (Card / Coach / Map), Board, Table, Doc (export Project Definition) lenses
 - [x] 46. Fun layer: confetti, HUD, dot votes, fun rating, Spark prompts
 - [x] 47. Seeded `CS2D3K Definition.formmap` from the CS2D3K-doc vault
+- [x] 47b. Form-map v2: plain cards (tags + field registry), groups (any assign, nesting), saved boards from groups or a field, embedded kanban nodes, generic coach + declarative rules, Product Definition as an example template, lossless v1 migration (FORMMAP.md)
 
 ## Phase 11 — Quality, tests, performance
 - [x] 48. Test infrastructure modelled on Logseq (Vitest unit tests mirroring src/, Playwright e2e per feature area, fixtures, failure dumps, perf budgets, CI)
-- [x] 49. Unit suite: 1,093 tests (main process, lib, stores, theme, canvas/graph/editor/form-map logic)
-- [x] 50. E2E suite: 254 tests (250 basic + 4 perf) against the real Electron app
+- [x] 49. Unit suite: 1,135 tests (main process, lib, stores, theme, canvas/graph/editor/form-map logic)
+- [x] 50. E2E suite: 270 tests (basic + perf) against the real Electron app
 - [x] 51. Robustness & security audit (QUALITY.md) — XSS→code execution, navigation, config path escape, save races, crash isolation, process leaks, crash-safe saves
 - [x] 52. Benchmark harness (bench/) + profiling; graph WebGL2 + worker simulation; canvas/form-map culling + LOD (PERFORMANCE.md)

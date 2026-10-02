@@ -45,7 +45,17 @@ async function once() {
   const app = await electron.launch({ args: [join(ROOT, OUT, 'main', 'index.js')], cwd: ROOT, env })
   const page = await app.firstWindow()
   const tWin = Date.now() - t0
-  await page.waitForFunction(() => !!window.__cs2d3k, null, { timeout: 600_000 })
+  try {
+    await page.waitForFunction(() => !!window.__cs2d3k, null, { timeout: 180_000 })
+  } catch (e) {
+    // diagnostics from the main process (the renderer may not answer)
+    const info = await app.evaluate(async ({ BrowserWindow, app: a }) => {
+      const wc = BrowserWindow.getAllWindows()[0]?.webContents
+      return { url: wc?.getURL(), loading: wc?.isLoading(), crashed: wc?.isCrashed(), metrics: a.getAppMetrics().map((m) => ({ type: m.type, cpu: m.cpu.percentCPUUsage, mem: m.memory.workingSetSize })) }
+    }).catch((err) => String(err))
+    console.log('renderer did not start:', JSON.stringify(info))
+    throw e
+  }
   const tHooks = Date.now() - t0
   // phases relative to the hooks being installed (polled every 10 ms)
   const phases = await page.evaluate(async () => {

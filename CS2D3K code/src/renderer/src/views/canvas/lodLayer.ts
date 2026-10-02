@@ -25,6 +25,8 @@ export interface LodNodeStyle {
   radius?: number
   /** monospace title (code) */
   mono?: boolean
+  /** columns drawn inside the card (kanban boards): title, CSS color, card count */
+  lanes?: { title: string; color?: string; count: number }[]
   /** freehand stroke instead of a box: flattened points relative to the node's x/y */
   points?: number[]
   stroke?: string
@@ -50,6 +52,10 @@ export interface LodScene {
 const DIM_CARD = 0.14
 const DIM_BACK = 0.3
 const DIM_EDGE = 0.07
+/** board lanes: header height above the card stubs, stub height and gap (world px) */
+const LANE_HEAD = 40
+const LANE_STUB = 34
+const LANE_GAP = 8
 /** max backing-store size per side (px) */
 const MAX_PX = 4096
 
@@ -212,7 +218,40 @@ export class LodLayer {
         ctx.fillStyle = this.color(st.accent)
         ctx.fillRect(n.x + r * 0.6, n.y, Math.max(0, n.width - r * 1.2), Math.min(n.height / 4, Math.max(3, 1.5 / z)))
       }
+      if (st.lanes?.length) this.drawLanes(n, st.lanes, a)
     }
+    ctx.globalAlpha = 1
+  }
+
+  /** lane rects of a board card (below its header strip) */
+  private laneRects(n: CanvasNode, count: number): { x: number; y: number; w: number; h: number }[] {
+    const pad = 12
+    const gap = 10
+    const top = n.y + 46
+    const w = (n.width - pad * 2 - gap * (count - 1)) / count
+    const h = n.y + n.height - pad - top
+    if (w <= 4 || h <= 4) return []
+    return Array.from({ length: count }, (_, i) => ({ x: n.x + pad + i * (w + gap), y: top, w, h }))
+  }
+
+  private drawLanes(n: CanvasNode, lanes: NonNullable<LodNodeStyle['lanes']>, alpha: number): void {
+    const ctx = this.ctx
+    const rects = this.laneRects(n, lanes.length)
+    rects.forEach((r, i) => {
+      const color = this.color(lanes[i].color ?? 'var(--text-faint)')
+      ctx.globalAlpha = 0.1 * alpha
+      ctx.fillStyle = color
+      ctx.fillRect(r.x, r.y, r.w, r.h)
+      ctx.globalAlpha = alpha
+      ctx.fillRect(r.x, r.y, r.w, Math.min(4, r.h))
+      // card stubs (as many as fit, so a dense column reads as full)
+      const top = r.y + LANE_HEAD
+      const fit = Math.max(0, Math.floor((r.y + r.h - top) / (LANE_STUB + LANE_GAP)))
+      const stubs = Math.min(lanes[i].count, fit)
+      if (!stubs || r.w <= 16) return
+      ctx.globalAlpha = 0.28 * alpha
+      for (let s = 0; s < stubs; s++) ctx.fillRect(r.x + 6, top + s * (LANE_STUB + LANE_GAP), r.w - 12, LANE_STUB)
+    })
     ctx.globalAlpha = 1
   }
 
@@ -305,9 +344,19 @@ export class LodLayer {
       const cpl = Math.max(3, Math.floor((n.width - padX * 2) / (fsTitle * (st.mono ? 0.62 : 0.56))))
       ctx.font = `${st.mono ? 500 : 700} ${fsTitle}px ${st.mono ? fonts.mono : fonts.text}`
       ctx.fillStyle = normal
-      for (const l of this.wrap(n, st.title, cpl, maxLines)) {
+      for (const l of st.lanes?.length ? this.wrap(n, st.title, cpl, 1) : this.wrap(n, st.title, cpl, maxLines)) {
         ctx.fillText(l, n.x + padX, y)
         y += lineH
+      }
+      if (st.lanes?.length) {
+        const rects = this.laneRects(n, st.lanes.length)
+        ctx.font = `650 ${fsLabel}px ${fonts.text}`
+        rects.forEach((r, i) => {
+          if (fsLabel * 1.6 > r.h) return
+          const lane = st.lanes![i]
+          ctx.fillStyle = muted
+          ctx.fillText(clip(`${lane.title} · ${lane.count}`, r.w - 12, fsLabel), r.x + 6, r.y + 8)
+        })
       }
     }
     ctx.globalAlpha = 1

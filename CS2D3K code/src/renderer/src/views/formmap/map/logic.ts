@@ -1,37 +1,9 @@
-// Pure helpers for the map lens: relation inference, mind-map placement, layout (align/distribute/tidy), pen strokes.
+// Pure helpers for the map lens: mind-map parents, group geometry, layout (align/distribute/tidy), pen strokes.
 import { snap, intersects, type CanvasData, type CanvasNode, type Point, type Rect } from '../../canvas/model'
-import { isForm, isZone, zones, type FormKind, type FormMapEdge, type FormNode, type Relation, type ZoneNode } from '../schema'
+import { groups, groupChainIn, isForm, isGroup, type FormMapEdge, type FormNode, type GroupNode, type Relation } from '../schema'
+import { GROUP_PAD, GROUP_TOP } from '../layout'
 
 // ---------------------------------------------------------------- relations
-
-/** Sensible default relation for a new edge from → to. */
-export function inferRelation(from?: FormKind, to?: FormKind): Relation {
-  if (!from || !to) return 'relates'
-  if (from === 'idea') return 'refines'
-  if ((from === 'feature' || from === 'approach') && to === 'goal') return 'serves'
-  if (to === 'principle' && from !== 'principle') return 'because'
-  if (from === 'goal' && to === 'goal') return 'serves'
-  if (from === 'feature' && (to === 'feature' || to === 'approach')) return 'depends'
-  if (from === 'approach' && to === 'approach') return 'depends'
-  if (from === 'question') return 'relates'
-  return 'relates'
-}
-
-/** Kind of a mind-map child (Tab) under a parent of `kind`. */
-export function childKind(kind: FormKind): FormKind {
-  switch (kind) {
-    case 'goal':
-      return 'feature'
-    case 'principle':
-      return 'approach'
-    case 'approach':
-      return 'feature'
-    case 'question':
-      return 'idea'
-    default:
-      return kind
-  }
-}
 
 const UPSTREAM: Relation[] = ['serves', 'because', 'refines', 'depends']
 
@@ -45,7 +17,7 @@ export function parentEdge(d: CanvasData, id: string): FormMapEdge | null {
   return null
 }
 
-// ---------------------------------------------------------------- zones
+// ---------------------------------------------------------------- groups
 
 export function centerIn(z: Rect, n: Rect): boolean {
   const cx = n.x + n.width / 2
@@ -53,10 +25,10 @@ export function centerIn(z: Rect, n: Rect): boolean {
   return cx >= z.x && cx <= z.x + z.width && cy >= z.y && cy <= z.y + z.height
 }
 
-/** Smallest zone containing a world point. */
-export function zoneAtPoint(d: CanvasData, p: Point): ZoneNode | null {
-  let best: ZoneNode | null = null
-  for (const z of zones(d)) {
+/** Smallest group containing a world point. */
+export function groupAtPoint(d: CanvasData, p: Point): GroupNode | null {
+  let best: GroupNode | null = null
+  for (const z of groups(d)) {
     if (p.x >= z.x && p.x <= z.x + z.width && p.y >= z.y && p.y <= z.y + z.height) {
       if (!best || z.width * z.height < best.width * best.height) best = z
     }
@@ -64,13 +36,12 @@ export function zoneAtPoint(d: CanvasData, p: Point): ZoneNode | null {
   return best
 }
 
-/** Cards (non-zone, non-drawing) whose center is inside the zone — and not inside a smaller nested zone. */
-export function cardsInZone(d: CanvasData, z: ZoneNode): CanvasNode[] {
-  const zs = zones(d)
+/** Cards (non-group, non-drawing nodes) whose innermost group is `g`. */
+export function cardsInGroup(d: CanvasData, g: GroupNode): CanvasNode[] {
+  const gs = groups(d)
   return d.nodes.filter((n) => {
-    if (isZone(n) || n.type === 'drawing' || n.type === 'group') return false
-    if (!centerIn(z, n)) return false
-    return !zs.some((o) => o.id !== z.id && o.width * o.height < z.width * z.height && centerIn(o, n))
+    if (isGroup(n) || n.type === 'drawing') return false
+    return groupChainIn(gs, n).at(-1)?.id === g.id
   })
 }
 
@@ -78,7 +49,7 @@ export function cardsInZone(d: CanvasData, z: ZoneNode): CanvasNode[] {
 
 /** Nearest free spot for `r`: tries below first, then neighbouring columns (never overlaps a card). */
 export function findFree(d: CanvasData, r: Rect, ignore: Set<string> = new Set()): Rect {
-  const cards = d.nodes.filter((n) => !ignore.has(n.id) && !isZone(n) && n.type !== 'group' && n.type !== 'drawing')
+  const cards = d.nodes.filter((n) => !ignore.has(n.id) && !isGroup(n) && n.type !== 'drawing')
   const pad = (x: Rect): Rect => ({ x: x.x - 12, y: x.y - 12, width: x.width + 24, height: x.height + 24 })
   const sx = snap(r.width + 40)
   const sy = snap(r.height / 2 + 10) || 40
@@ -134,27 +105,25 @@ export function distributeTargets(nodes: CanvasNode[], axis: 'x' | 'y'): Map<str
   return out
 }
 
-export const ZONE_HEADER = 64
-const ZONE_PAD = 30
 const GAP = 20
 
-/** Grid layout of a zone's cards in reading order. Returns targets and the zone height needed. */
-export function tidyZone(d: CanvasData, z: ZoneNode): { targets: Map<string, Point>; height: number } {
-  const cards = cardsInZone(d, z).sort((a, b) => (Math.abs(a.y - b.y) < 40 ? a.x - b.x : a.y - b.y))
+/** Grid layout of a group's own cards in reading order. Returns targets and the group height needed. */
+export function tidyGroup(d: CanvasData, z: GroupNode): { targets: Map<string, Point>; height: number } {
+  const cards = cardsInGroup(d, z).sort((a, b) => (Math.abs(a.y - b.y) < 40 ? a.x - b.x : a.y - b.y))
   const targets = new Map<string, Point>()
   if (!cards.length) return { targets, height: z.height }
   const colW = Math.max(...cards.map((c) => c.width))
-  const inner = z.width - ZONE_PAD * 2
+  const inner = z.width - GROUP_PAD * 2
   const cols = Math.max(1, Math.floor((inner + GAP) / (colW + GAP)))
   const used = cols * colW + (cols - 1) * GAP
-  const x0 = z.x + ZONE_PAD + Math.max(0, (inner - used) / 2)
-  let y = z.y + ZONE_HEADER + 10
+  const x0 = z.x + GROUP_PAD + Math.max(0, (inner - used) / 2)
+  let y = z.y + GROUP_TOP
   for (let i = 0; i < cards.length; i += cols) {
     const row = cards.slice(i, i + cols)
     row.forEach((c, j) => targets.set(c.id, { x: snap(x0 + j * (colW + GAP), 10), y: snap(y, 10) }))
     y += Math.max(...row.map((c) => c.height)) + GAP
   }
-  return { targets, height: Math.max(z.height, snap(y - z.y + ZONE_PAD - GAP + 10)) }
+  return { targets, height: Math.max(z.height, snap(y - z.y + GROUP_PAD - GAP + 10)) }
 }
 
 // ---------------------------------------------------------------- pen

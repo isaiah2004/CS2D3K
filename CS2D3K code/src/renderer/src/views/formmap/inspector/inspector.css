@@ -270,14 +270,7 @@
 }
 
 /* ------------------------------------------------------------ card editor */
-.fm-i-kinds {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.fm-i-form > .fm-i-kinds {
-  margin-bottom: 8px;
-}
+
 .fm-i-zoneline {
   font-size: var(--font-ui-smaller);
   color: var(--text-faint);
@@ -332,8 +325,7 @@
   background: var(--background-modifier-border);
   overflow: hidden;
 }
-.fm-cl-bar > span,
-.fm-progress > span {
+.fm-cl-bar > span {
   display: block;
   height: 100%;
   background: var(--color-green);
@@ -724,22 +716,7 @@
 .fm-i-emoji-btn.is-active {
   border-color: var(--interactive-accent);
 }
-.fm-i-assign {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.fm-i-assign-row {
-  display: grid;
-  grid-template-columns: 68px 1fr;
-  gap: 6px;
-  align-items: start;
-}
-.fm-i-assign-key {
-  font-size: var(--font-ui-smaller);
-  color: var(--text-faint);
-  padding-top: 2px;
-}
+
 .fm-i-edge {
   display: flex;
   flex-direction: column;
@@ -877,11 +854,7 @@
   color: var(--text-faint);
   margin-bottom: 4px;
 }
-.fm-coach-pct {
-  font-weight: 700;
-  color: var(--color-green);
-  font-variant-numeric: tabular-nums;
-}
+
 .fm-budget {
   position: relative;
   display: flex;
@@ -891,18 +864,7 @@
   background: var(--background-modifier-hover);
   padding: 2px;
 }
-.fm-budget-seg {
-  height: 100%;
-  border-radius: 2px;
-  opacity: 0.85;
-  cursor: pointer;
-  transition: opacity 0.1s, transform 0.1s;
-  min-width: 3px;
-}
-.fm-budget-seg:hover {
-  opacity: 1;
-  transform: scaleY(1.25);
-}
+
 .fm-budget-line {
   position: absolute;
   top: -4px;
@@ -915,12 +877,7 @@
 .fm-budget.is-over {
   box-shadow: 0 0 0 1px rgba(var(--color-red-rgb), 0.6);
 }
-.fm-progress {
-  height: 8px;
-  border-radius: 4px;
-  background: var(--background-modifier-hover);
-  overflow: hidden;
-}
+
 .fm-kind-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -947,9 +904,7 @@
   border-color: var(--fm-chip-color);
   background: color-mix(in srgb, var(--fm-chip-color) 15%, var(--background-primary));
 }
-.fm-kind-tile-emoji {
-  font-size: 15px;
-}
+
 .fm-kind-tile b {
   font-size: 14px;
   font-variant-numeric: tabular-nums;

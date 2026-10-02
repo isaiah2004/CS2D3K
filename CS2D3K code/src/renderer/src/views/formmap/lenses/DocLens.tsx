@@ -1,9 +1,10 @@
-// Doc lens: the map as a structured "Project Definition" markdown document, with copy / export-to-note.
+// Doc lens: the map as a markdown document (groups in pitch order with their cards, kanban nodes as lists), with copy /
+// export-to-note.
 import { useEffect, useMemo, useState } from 'react'
 import { Copy, Check, FileOutput, ExternalLink, FolderPen } from 'lucide-react'
 import type { LensProps } from '../context'
 import type { FormMapData } from '../schema'
-import { definitionMarkdown } from './definitionDoc'
+import { mapMarkdown } from './docMarkdown'
 import { setMeta } from './ops'
 import MarkdownPreview from '@/lib/markdown/MarkdownPreview'
 import { saveFile } from '@/lib/fileops'
@@ -28,7 +29,7 @@ const ago = (t: number): string => {
 export default function DocLens({ ctl }: LensProps) {
   const data = ctl.data as FormMapData
   const mapName = stem(ctl.path)
-  const md = useMemo(() => definitionMarkdown(data, mapName), [data, mapName])
+  const md = useMemo(() => mapMarkdown(data, mapName), [data, mapName])
   const exportPath = data.formmap?.exportPath
   const [copied, setCopied] = useState(false)
   const [lastExport, setLastExport] = useState<number | undefined>(() => exportedAt.get(ctl.path))
@@ -46,9 +47,9 @@ export default function DocLens({ ctl }: LensProps) {
   }
 
   const askPath = async (): Promise<string | null> => {
-    const initial = exportPath || join(dirname(ctl.path), `${mapName} - Definition.md`)
+    const initial = exportPath || join(dirname(ctl.path), `${mapName} - Doc.md`)
     const p = await promptText({
-      title: 'Export Project Definition',
+      title: 'Export to a note',
       message: 'Vault path of the markdown note to write. Later exports overwrite it.',
       initial,
       selectStem: true,
@@ -88,7 +89,7 @@ export default function DocLens({ ctl }: LensProps) {
       <div className="fm-doc-bar">
         <div className="fm-doc-bar-title">
           <span className="fm-doc-bar-emoji">📄</span>
-          Project Definition
+          Document
           {exportPath && (
             <span className="fm-doc-bar-path" title={exportPath}>
               → {exportPath}
@@ -112,7 +113,7 @@ export default function DocLens({ ctl }: LensProps) {
               <FolderPen />
             </button>
           )}
-          <button className="btn mod-cta fm-doc-export" onClick={() => void doExport()} title={exportPath ? `Write to ${exportPath}` : 'Choose a note and write the definition'}>
+          <button className="btn mod-cta fm-doc-export" onClick={() => void doExport()} title={exportPath ? `Write to ${exportPath}` : 'Choose a note and write the document'}>
             <FileOutput size={14} />
             Export to note
           </button>

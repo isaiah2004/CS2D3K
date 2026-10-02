@@ -6,6 +6,7 @@
 import { test as base, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { cpSync, mkdtempSync, rmSync, mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs'
 import { tmpdir } from 'os'
+import { spawnSync } from 'child_process'
 import { join, dirname } from 'path'
 import { App } from './helpers/app'
 
@@ -74,6 +75,33 @@ function listTree(dir: string, base = ''): string[] {
   return out
 }
 
+/**
+ * Close the app; if it takes longer than `ms` (a busy machine can make Electron's shutdown take minutes), kill it.
+ * The test's assertions are done by then, and the vault copy is deleted anyway.
+ */
+async function closeApp(a: ElectronApplication, ms = 20_000): Promise<void> {
+  let proc: ReturnType<ElectronApplication['process']> | null = null
+  try {
+    proc = a.process()
+  } catch {
+    return // already closed (a test may close the app itself before relaunching)
+  }
+  const closed = a.close().then(
+    () => true,
+    () => true
+  )
+  const done = await Promise.race([closed, new Promise<boolean>((r) => setTimeout(() => r(false), ms))])
+  if (done) return
+  try {
+    // the whole tree: Chromium's GPU / renderer processes must not linger and slow the next launch
+    if (!proc) return
+    if (process.platform === 'win32' && proc.pid) spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' })
+    else proc.kill('SIGKILL')
+  } catch {
+    /* already gone */
+  }
+}
+
 async function launchElectron(vaultPath: string | null, userDataDir: string): Promise<ElectronApplication> {
   const env: Record<string, string> = { ...(process.env as Record<string, string>) }
   delete env.ELECTRON_RUN_AS_NODE
@@ -86,7 +114,8 @@ async function launchElectron(vaultPath: string | null, userDataDir: string): Pr
 
 /** wire console capture, size the window and wait until the app is usable */
 async function preparePage(electronApp: ElectronApplication, session: Session, allow: RegExp[], noVault: boolean): Promise<Page> {
-  const page = await electronApp.firstWindow()
+  // a busy machine (parallel workers, benchmarks) can take a while to show the first window
+  const page = await electronApp.firstWindow({ timeout: 90_000 })
   session.pages.push(page)
   page.on('console', (m) => {
     session.log.push(`[${m.type()}] ${m.text()}`)
@@ -140,7 +169,7 @@ export const test = base.extend<Fixtures>({
   _session: async ({}, use) => {
     const session: Session = { apps: [], pages: [], log: [], errors: [] }
     await use(session)
-    for (const a of session.apps) await a.close().catch(() => {})
+    for (const a of session.apps) await closeApp(a)
   },
 
   electronApp: async ({ vaultDir, userDataDir, vault, _session }, use) => {
@@ -172,7 +201,8 @@ export const test = base.extend<Fixtures>({
   relaunch: async ({ page, vaultDir, userDataDir, allowConsoleErrors, _session }, use) => {
     void page
     await use(async (opts: LaunchOptions = {}) => {
-      for (const a of _session.apps.splice(0)) await a.close().catch(() => {})
+      // persistence tests rely on a graceful shutdown here: allow it much longer before killing
+      for (const a of _session.apps.splice(0)) await closeApp(a, 120_000)
       const t0 = Date.now()
       const electronApp = await launchElectron(opts.noVault ? null : (opts.vaultPath ?? vaultDir), userDataDir)
       _session.apps.push(electronApp)

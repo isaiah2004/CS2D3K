@@ -9,6 +9,7 @@ import CoachTab from './CoachTab'
 import MapTab from './MapTab'
 import '../lenses/lenses.css'
 import './inspector.css'
+import './editors.css'
 
 type TabId = 'card' | 'coach' | 'map'
 const TABS: { id: TabId; label: string }[] = [

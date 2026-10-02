@@ -588,7 +588,7 @@ export default function CanvasEngine({ tab, visible, focused, doc, path, ext, en
       const inside = w.x >= n.x && w.x <= n.x + n.width && w.y >= n.y && w.y <= n.y + n.height
       if (layer === 'back') {
         const onHead = w.x >= n.x && w.x <= n.x + n.width && w.y >= n.y - head && w.y < n.y
-        if (!onHead && !(inside && (n.type === 'group' || canMove(n)))) continue
+        if (!onHead && !(inside && canMove(n))) continue
       } else if (!inside) continue
       const rank = rankOf[layer] * 1e7 + i!
       if (rank > bestRank) {
@@ -997,7 +997,10 @@ export default function CanvasEngine({ tab, visible, focused, doc, path, ext, en
       d.moved = true
       setInteracting(true)
       if (d.kind === 'move' || d.kind === 'resize') doc.checkpoint()
-      if (d.kind === 'move') setMoving(new Set(d.origins.keys()))
+      if (d.kind === 'move') {
+        setMoving(new Set(d.origins.keys()))
+        extRef.current?.onMoveStart?.([...d.origins.keys()])
+      }
     }
     const free = e.ctrlKey || e.metaKey
     if (d.kind === 'marquee') {
@@ -1031,6 +1034,7 @@ export default function CanvasEngine({ tab, visible, focused, doc, path, ext, en
         dy = snap(o.y + dy) - o.y
       }
       update((dd) => ({ ...dd, nodes: dd.nodes.map((n) => { const org = d.origins.get(n.id); return org ? { ...n, x: org.x + dx, y: org.y + dy } : n }) }), { history: false })
+      extRef.current?.onMoveDrag?.([...d.origins.keys()], e)
     } else if (d.kind === 'resize') {
       const r = d.rect
       const dx = w.x - d.start.x

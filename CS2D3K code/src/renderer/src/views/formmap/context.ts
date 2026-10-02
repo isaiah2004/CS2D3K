@@ -2,7 +2,7 @@
 import { createContext, useContext } from 'react'
 import type { CanvasDoc, UpdateOptions } from '../canvas/useCanvasDoc'
 import type { TabState } from '@/store/workspace'
-import type { FormKind, FormMapData, FormNode } from './schema'
+import type { FormMapData, FormMapMeta, FormNode } from './schema'
 
 export type LensId = 'map' | 'board' | 'table' | 'doc'
 
@@ -11,20 +11,21 @@ export interface MapApi {
   /** fly the camera to fit these node ids (and optionally select them) */
   reveal(ids: string[], opts?: { select?: boolean }): void
   fit(): void
-  /** start pitch (presentation) mode at the first ordered zone */
+  /** start pitch (presentation) mode at the first ordered group */
   present(): void
 }
 
+/** Dim everything that doesn't carry one of these tags. */
 export interface FocusFilter {
-  kinds?: FormKind[]
-  /** feature phase value */
-  phase?: string
+  tags?: string[]
 }
 
 export interface FormMapCtl {
   doc: CanvasDoc
   /** typed view of doc.data */
   data: FormMapData
+  /** the map-wide registries (fields, tags, presets, boards…); stable while only nodes change */
+  meta: FormMapMeta
   path: string
   tab: TabState
   visible: boolean
@@ -32,6 +33,11 @@ export interface FormMapCtl {
 
   lens: LensId
   setLens(l: LensId): void
+
+  /** saved board shown by the Board lens */
+  activeBoard: string | null
+  /** show a saved board (switches to the Board lens) */
+  openBoard(id: string): void
 
   /** selected node ids (shared across lenses) */
   selection: string[]
@@ -41,7 +47,7 @@ export interface FormMapCtl {
   highlight: string[] | null
   setHighlight(ids: string[] | null): void
 
-  /** dim everything that doesn't match (kind / phase) */
+  /** dim everything that doesn't match */
   focusFilter: FocusFilter | null
   setFocusFilter(f: FocusFilter | null): void
 

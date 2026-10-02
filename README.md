@@ -22,14 +22,15 @@ An Electron + React + TypeScript desktop app. Any folder of Markdown files is a 
 
 | | |
 | --- | --- |
-| ![Note editor with live preview](CS2D3K%20code/docs/images/note-live-preview.png) | ![Form-map](CS2D3K%20code/docs/images/formmap-map.png) |
-| **Notes**: CodeMirror 6 editor with Live Preview, Source and Reading modes. Wikilinks, embeds, callouts, tasks, properties, backlinks, outline, and **runnable code blocks**. | **Form-map**: a richer canvas for deciding *what to build*. Typed cards (idea, principle, goal, approach, feature, question), semantic zones, relations, a Why-trace, a Coach, and Pitch mode. |
-| ![Canvas](CS2D3K%20code/docs/images/canvas.png) | ![Board lens](CS2D3K%20code/docs/images/formmap-board.png) |
-| **Canvas**: an infinite canvas built from scratch, with cards, note and file embeds, web pages, groups, edges, and **code cells you can run**. | **Lenses**: the same form-map as a Map, a kanban Board, a Table, or a generated Project Definition document. |
+| ![Note editor with live preview](CS2D3K%20code/docs/images/note-live-preview.png) | ![Form-map with groups, cards and a kanban node](CS2D3K%20code/docs/images/formmap-sprint-map.png) |
+| **Notes**: CodeMirror 6 editor with Live Preview, Source and Reading modes. Wikilinks, embeds, callouts, tasks, properties, backlinks, outline, and **runnable code blocks**. | **Form-map**: a more advanced canvas. Plain cards with free tags and typed fields, groups that give cards meaning (and nest), kanban boards made from groups and kanban nodes on the canvas, relations, a Why-trace, a Coach, and Pitch mode. |
+| ![Canvas](CS2D3K%20code/docs/images/canvas.png) | ![Bible verse note](CS2D3K%20code/docs/images/bible-verse.png) |
+| **Canvas**: an infinite canvas built from scratch, with cards, note and file embeds, web pages, groups, edges, and **code cells you can run**. | **Big vaults**: the full King James Bible as 32k linked notes, each verse with its real cross-references. |
 | ![Code editor and terminal](CS2D3K%20code/docs/images/code-terminal.png) | ![Settings and themes](CS2D3K%20code/docs/images/settings-themes.png) |
 | **Code**: Monaco editor for every code file, run-file, an integrated terminal (xterm.js + node-pty) and an Output panel. | **Theming**: dark/light, accent colour, built-in themes, vault themes and CSS snippets, all applied live. |
+| ![Loading screen](CS2D3K%20code/docs/images/loading-screen.png) | ![Board lens built from groups](CS2D3K%20code/docs/images/formmap-board.png) |
+| **Loading**: big vaults open behind a live loading screen, where the real graph assembles as notes are read. A metadata cache then makes re-opening the 32k-note Bible take about 1.5 s. | **Kanban**: saved boards built from canvas groups (columns = groups) or from a field, live-synced with the canvas, plus self-contained kanban nodes you place on the map. |
 
-![A verse note in the KJV Bible vault](CS2D3K%20code/docs/images/bible-verse.png)
 
 Also included: two configurable sidebars, tabs and splits, a command palette and quick switcher, custom hotkeys,
 full-text search, bookmarks, a tags pane, and a local graph.
@@ -44,15 +45,15 @@ npm run build        # production build
 npm start            # run the production build
 ```
 
-Open `CS2D3K code/sample-vault` to try everything, including the `CS2D3K Definition` form-map, which is built from the
-doc vault. To generate the full KJV Bible vault (32k notes with real cross-references), run
+Open `CS2D3K code/sample-vault` to try everything, including the `CS2D3K Definition` form-map (built from the doc vault,
+with the Product Definition example template) and the `Sprint board` form-map (saved boards and a kanban node). To generate the full KJV Bible vault (32k notes with real cross-references), run
 `node scripts/gen-bible.mjs` (output in `CS2D3K code/vaults/`, gitignored).
 
 > If Electron starts as plain Node from your terminal, unset `ELECTRON_RUN_AS_NODE`.
 
 ### Quality and performance
 
-- **Tests**, modelled on Logseq: about 1,090 Vitest unit tests that mirror the source tree, plus about 254 Playwright
+- **Tests**, modelled on Logseq: about 1,135 Vitest unit tests that mirror the source tree, plus about 270 Playwright
   end-to-end tests that drive the real Electron app (a fresh app and vault per test, failure dumps, perf budgets).
   CI is in `.github/workflows/test.yml`. See [TESTING.md](CS2D3K%20code/TESTING.md).
 - **Robustness and security audit**: [QUALITY.md](CS2D3K%20code/QUALITY.md).

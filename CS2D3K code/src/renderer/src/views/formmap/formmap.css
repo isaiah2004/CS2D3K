@@ -82,7 +82,7 @@
 }
 .fm-template-grid {
   display: grid;
-  grid-template-columns: repeat(3, 240px);
+  grid-template-columns: repeat(2, 280px);
   gap: 16px;
 }
 .fm-template-card {
