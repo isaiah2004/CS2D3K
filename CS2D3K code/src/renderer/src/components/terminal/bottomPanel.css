@@ -1,0 +1,226 @@
+/* ------------------------------------------------------------------ bottom panel chrome */
+.bottom-panel-inner {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.bottom-panel-header {
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 8px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  user-select: none;
+}
+.bottom-tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.bottom-tabs::-webkit-scrollbar {
+  display: none;
+}
+.bottom-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 4px 0 8px;
+  max-width: 200px;
+  flex-shrink: 0;
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+.bottom-tab:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.bottom-tab.is-active {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: 0 0 0 1px var(--background-modifier-border);
+}
+.bottom-tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--interactive-accent);
+}
+.bottom-tab-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+.bottom-tab.is-active .bottom-tab-icon {
+  color: var(--text-accent);
+}
+.bottom-tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bottom-tab-close.clickable-icon {
+  padding: 2px;
+  opacity: 0;
+}
+.bottom-tab-close.clickable-icon svg {
+  width: 12px;
+  height: 12px;
+}
+.bottom-tab:hover .bottom-tab-close,
+.bottom-tab.is-active .bottom-tab-close {
+  opacity: 1;
+}
+.bottom-new {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+.bottom-new .bottom-new-menu {
+  padding: 4px 1px;
+}
+.bottom-new .bottom-new-menu svg {
+  width: 12px;
+  height: 12px;
+}
+.bottom-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.bottom-panel-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.bottom-panel-pane {
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------------ terminal */
+.terminal-host {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 0 2px 12px;
+  background: var(--background-primary);
+  overflow: hidden;
+}
+.terminal-host .xterm {
+  height: 100%;
+}
+.terminal-host .xterm-viewport {
+  /* xterm paints its own background; keep scrollbars thin like the rest of the app */
+  scrollbar-width: thin;
+}
+
+/* ------------------------------------------------------------------ output */
+.output-view {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 0 12px;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-small);
+  outline: none;
+  user-select: text;
+}
+.output-empty {
+  padding: 16px;
+  color: var(--text-faint);
+  font-family: var(--font-interface);
+  text-align: center;
+}
+.output-run + .output-run {
+  border-top: 1px solid var(--background-modifier-border);
+  margin-top: 6px;
+  padding-top: 6px;
+}
+.output-run-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 12px;
+  font-family: var(--font-interface);
+  color: var(--text-muted);
+}
+.output-run-header > svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.output-run-title {
+  color: var(--text-normal);
+  font-weight: 600;
+}
+.output-run-meta {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+.output-stop.clickable-icon {
+  margin-left: auto;
+  padding: 2px;
+}
+.output-stop.clickable-icon svg {
+  width: 12px;
+  height: 12px;
+  color: var(--color-red);
+  fill: var(--color-red);
+}
+.output-ok {
+  color: var(--color-green);
+}
+.output-fail {
+  color: var(--color-red);
+}
+.output-spin {
+  color: var(--text-accent);
+  animation: output-spin 0.9s linear infinite;
+}
+@keyframes output-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.output-run-body {
+  margin: 2px 0 0;
+  padding: 0 12px 0 32px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.5;
+  color: var(--text-normal);
+}
+.output-stderr {
+  color: var(--color-red);
+}
+.output-info {
+  color: var(--text-muted);
+}
+.output-run-empty {
+  padding: 0 12px 0 32px;
+  color: var(--text-faint);
+  font-style: italic;
+}

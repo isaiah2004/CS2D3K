@@ -1,0 +1,1 @@
+Here is where we define the technical stack and Development tools and everything technical that is not code. Like what the system architecture is. is this a desktop app. mobile app. cross platform? native? and does it have microservices what stack is the client? what stack is the server? what Services are our dependencies.  etc.

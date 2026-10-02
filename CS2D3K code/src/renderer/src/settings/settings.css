@@ -1,0 +1,281 @@
+.settings-modal {
+  width: min(1100px, 92vw);
+  height: min(780px, 86vh);
+  flex-direction: row;
+  padding: 0;
+}
+.settings-nav {
+  width: 230px;
+  flex-shrink: 0;
+  background: var(--background-secondary);
+  border-right: 1px solid var(--background-modifier-border);
+  padding: 14px 10px;
+  overflow-y: auto;
+}
+.settings-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  margin-bottom: 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-form-field);
+  color: var(--text-faint);
+}
+.settings-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: var(--font-ui-small);
+  min-width: 0;
+}
+.settings-nav-group {
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  color: var(--text-faint);
+  padding: 12px 10px 4px;
+}
+.settings-nav-item {
+  padding: 5px 10px;
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+}
+.settings-nav-item:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.settings-nav-item.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.settings-content {
+  flex: 1;
+  position: relative;
+  overflow-y: auto;
+  min-width: 0;
+}
+.settings-content-inner {
+  padding: 24px 40px 48px;
+  max-width: 820px;
+}
+.settings-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 2;
+}
+.setting-heading {
+  font-size: var(--font-ui-large);
+  font-weight: 600;
+  color: var(--text-normal);
+  padding: 18px 0 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 4px;
+}
+.setting-heading:first-child {
+  padding-top: 4px;
+}
+.setting-item {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.setting-item:last-child {
+  border-bottom: none;
+}
+.setting-item.vertical {
+  flex-direction: column;
+  align-items: stretch;
+}
+.setting-item-info {
+  flex: 1;
+  min-width: 0;
+}
+.setting-item-name {
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+}
+.setting-item-description {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  margin-top: 3px;
+  line-height: 1.45;
+  user-select: text;
+}
+.setting-item-description code,
+.setting-note code {
+  font-family: var(--font-monospace);
+  font-size: 0.95em;
+  background: var(--code-background);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+.setting-item-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.setting-note {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  padding: 10px 0;
+  line-height: 1.5;
+  user-select: text;
+}
+.slider {
+  width: 160px;
+  accent-color: var(--interactive-accent);
+}
+.slider-value {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  min-width: 40px;
+  text-align: right;
+}
+
+.segmented {
+  display: flex;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+}
+.segmented-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: none;
+  background: var(--background-modifier-form-field);
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+.segmented-btn + .segmented-btn {
+  border-left: 1px solid var(--background-modifier-border);
+}
+.segmented-btn.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.accent-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.accent-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.accent-dot.is-active {
+  box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 4px var(--text-normal);
+}
+.accent-picker {
+  width: 28px;
+  height: 24px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: none;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  padding: 12px 0;
+}
+.theme-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.1s, transform 0.1s;
+}
+.theme-card:hover {
+  border-color: var(--background-modifier-border-focus);
+  transform: translateY(-1px);
+}
+.theme-card.is-active {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+.theme-preview {
+  height: 74px;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+.theme-card-new .theme-preview {
+  align-items: center;
+  color: var(--text-faint);
+  background: var(--background-secondary);
+}
+.tp-side {
+  width: 28%;
+}
+.tp-lines {
+  flex: 1;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.tp-lines > div {
+  height: 5px;
+  border-radius: 3px;
+}
+.theme-card-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 10px;
+  font-size: var(--font-ui-small);
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+.hotkey-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-ui-smaller);
+  padding: 2px 4px 2px 8px;
+  border-radius: var(--radius-s);
+  background: var(--background-secondary-alt);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+}
+.hotkey-pill.is-conflict {
+  border-color: var(--color-orange);
+}
+.hotkey-pill.is-recording {
+  border-color: var(--interactive-accent);
+  color: var(--text-accent);
+  padding-right: 8px;
+}
+.hotkey-remove {
+  display: flex;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 1px;
+  border-radius: 3px;
+}
+.hotkey-remove:hover {
+  color: var(--text-error);
+  background: var(--background-modifier-hover);
+}

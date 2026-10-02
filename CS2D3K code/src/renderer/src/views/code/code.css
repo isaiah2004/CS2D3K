@@ -1,0 +1,72 @@
+.code-view {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: var(--background-primary);
+}
+.code-view-editor {
+  position: absolute;
+  inset: 0;
+}
+
+/* header: run button + dirty marker */
+.view-header-actions .clickable-icon.code-run svg {
+  color: var(--color-green);
+}
+.view-header-actions .clickable-icon.code-run-stop svg {
+  color: var(--color-red);
+  fill: var(--color-red);
+}
+.code-dirty-dot {
+  width: 8px;
+  height: 8px;
+  margin: 0 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.code-dirty-dot:hover {
+  background: var(--interactive-accent);
+}
+
+/* large / binary / error states */
+.code-view-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-ui-medium);
+}
+.code-view-message > svg {
+  width: 40px;
+  height: 40px;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+.code-view-message-title {
+  color: var(--text-normal);
+  font-size: 1.15em;
+  font-weight: 600;
+}
+.code-view-message-text {
+  max-width: 460px;
+  line-height: 1.5;
+}
+.code-view-message-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Monaco chrome that doesn't follow theme colors */
+.code-view .monaco-editor .margin,
+.code-view .monaco-editor-background {
+  background-color: var(--background-primary);
+}

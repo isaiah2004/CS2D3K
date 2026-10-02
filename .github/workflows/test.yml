@@ -1,0 +1,82 @@
+# Mirrors Logseq's build.yml + clj-e2e.yml: static checks, unit tests, then the e2e suite against a production build.
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: CS2D3K code
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: CS2D3K code/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx vitest run --coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: CS2D3K code/coverage/
+
+  e2e:
+    needs: unit
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: CS2D3K code/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: npm run build
+      - name: e2e (basic)
+        if: runner.os != 'Linux'
+        run: npx playwright test --project=basic
+      - name: e2e (basic, xvfb)
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum -- npx playwright test --project=basic
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-report-${{ matrix.os }}
+          path: |
+            CS2D3K code/test-report/
+            CS2D3K code/test-results/
+
+  perf:
+    needs: e2e
+    runs-on: windows-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: CS2D3K code/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright test --project=perf

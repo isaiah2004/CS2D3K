@@ -1,0 +1,217 @@
+{
+  "date": "2026-10-02T03:24:08.243Z",
+  "machine": "AVY",
+  "uncapped": true,
+  "graph": [],
+  "canvas": [
+    {
+      "scenario": "canvas 200 nodes",
+      "nodes": 200,
+      "totalNodes": 200,
+      "edges": 240,
+      "readyMs": 761,
+      "openMs": 594.5999999046326,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 1032.4945842195523,
+        "frameAvg": 0.9653001936733376,
+        "frameP95": 1.5,
+        "long": 0
+      },
+      "zoom": {
+        "fps": 103.13737232345979,
+        "frameAvg": 9.653870967741934,
+        "frameP95": 18.199999999999818,
+        "long": 154
+      },
+      "zoomRange": {
+        "fps": 439.94134114752086,
+        "frameAvg": 2.2730303030303034,
+        "frameP95": 4.100000000000364,
+        "long": 1
+      },
+      "dragMsPerMove": 11.533333333333333,
+      "heapMB": 19.628567695617676,
+      "errors": []
+    },
+    {
+      "scenario": "canvas 1000 nodes",
+      "nodes": 1000,
+      "totalNodes": 1000,
+      "edges": 1200,
+      "readyMs": 637,
+      "openMs": 547.8999999761581,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 1174.2941901936604,
+        "frameAvg": 0.8521714447913714,
+        "frameP95": 1.2000000000002728,
+        "long": 0
+      },
+      "zoom": {
+        "fps": 104.17357839559419,
+        "frameAvg": 9.556687898089171,
+        "frameP95": 18,
+        "long": 154
+      },
+      "zoomRange": {
+        "fps": 559.1655836671208,
+        "frameAvg": 1.7883194278903458,
+        "frameP95": 2.399999999999636,
+        "long": 0
+      },
+      "dragMsPerMove": 11.366666666666667,
+      "heapMB": 17.6614351272583,
+      "errors": []
+    },
+    {
+      "scenario": "canvas 3000 nodes",
+      "nodes": 3000,
+      "totalNodes": 3000,
+      "edges": 3600,
+      "readyMs": 752,
+      "openMs": 593.8000000715256,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 1088.9999999826907,
+        "frameAvg": 0.9145087235996343,
+        "frameP95": 1.300000000000182,
+        "long": 0
+      },
+      "zoom": {
+        "fps": 103.42084327764518,
+        "frameAvg": 9.627564102564103,
+        "frameP95": 18.100000000000364,
+        "long": 152
+      },
+      "zoomRange": {
+        "fps": 412.8348660535785,
+        "frameAvg": 2.422276029055691,
+        "frameP95": 3.8000000000010914,
+        "long": 0
+      },
+      "dragMsPerMove": 12.85,
+      "heapMB": 33.39387130737305,
+      "errors": []
+    }
+  ],
+  "formmap": [
+    {
+      "scenario": "form-map 300 cards",
+      "cards": 300,
+      "totalNodes": 306,
+      "readyMs": 795,
+      "openMs": 886.3999999761581,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 964.269048714759,
+        "frameAvg": 1.0358451434497031,
+        "frameP95": 1.5,
+        "long": 2
+      },
+      "zoom": {
+        "fps": 723.54607563681,
+        "frameAvg": 1.382081989866421,
+        "frameP95": 1.8999999999996362,
+        "long": 0
+      },
+      "zoomRange": {
+        "fps": 638.3900309713587,
+        "frameAvg": 1.5663883089770354,
+        "frameP95": 2,
+        "long": 0
+      },
+      "dragMsPerMove": 17.15,
+      "lensMs": {
+        "Board": 6.099999904632568,
+        "Table": 31.199999928474426,
+        "Doc": 6.599999904632568,
+        "Map": 8.5,
+        "Board (warm)": 81.89999997615814,
+        "Map (warm)": 12.299999952316284
+      },
+      "heapMB": 20.51499843597412,
+      "errors": []
+    },
+    {
+      "scenario": "form-map 1000 cards",
+      "cards": 1000,
+      "totalNodes": 1006,
+      "readyMs": 878,
+      "openMs": 762.7000000476837,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 960.2053059515753,
+        "frameAvg": 1.0415133634154803,
+        "frameP95": 1.5,
+        "long": 1
+      },
+      "zoom": {
+        "fps": 702.9297070404688,
+        "frameAvg": 1.422569938359412,
+        "frameP95": 1.9000000000005457,
+        "long": 0
+      },
+      "zoomRange": {
+        "fps": 695.5275611710152,
+        "frameAvg": 1.4377575467177768,
+        "frameP95": 2,
+        "long": 1
+      },
+      "dragMsPerMove": 15.883333333333333,
+      "lensMs": {
+        "Board": 12.899999976158142,
+        "Table": 44.800000071525574,
+        "Doc": 5.200000047683716,
+        "Map": 8.600000023841858,
+        "Board (warm)": 178.10000002384186,
+        "Map (warm)": 20.299999952316284
+      },
+      "heapMB": 25.86646842956543,
+      "errors": []
+    },
+    {
+      "scenario": "form-map 3000 cards",
+      "cards": 3000,
+      "totalNodes": 3006,
+      "readyMs": 689,
+      "openMs": 796.8999999761581,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 665.6444785226727,
+        "frameAvg": 1.3930896344516774,
+        "frameP95": 1.7999999999997272,
+        "long": 0
+      },
+      "zoom": {
+        "fps": 701.9532031142137,
+        "frameAvg": 1.4245014245014245,
+        "frameP95": 2,
+        "long": 0
+      },
+      "zoomRange": {
+        "fps": 601.3459488272921,
+        "frameAvg": 1.662991689750693,
+        "frameP95": 2.100000000000364,
+        "long": 0
+      },
+      "dragMsPerMove": 18.566666666666666,
+      "lensMs": {
+        "Board": 11.700000047683716,
+        "Table": 114.69999992847443,
+        "Doc": 5.299999952316284,
+        "Map": 10.800000071525574,
+        "Board (warm)": 495.10000002384186,
+        "Map (warm)": 39.60000002384186
+      },
+      "heapMB": 43.89931583404541,
+      "errors": []
+    }
+  ]
+}

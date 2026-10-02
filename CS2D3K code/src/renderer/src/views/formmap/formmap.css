@@ -1,0 +1,117 @@
+/* Form-map shell */
+.fm-root {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+}
+.fm-lens {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+/* the map lens stays mounted behind the other lenses; content-visibility keeps its rendering state cached (cheap to
+   show again) while skipping its paint, hit testing and focus */
+.fm-lens-map {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fm-lens-map.is-hidden {
+  content-visibility: hidden;
+  pointer-events: none;
+}
+.fm-inspector {
+  width: 320px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.fm-lens-switch {
+  display: flex;
+  gap: 1px;
+  padding: 2px;
+  margin-right: 6px;
+  border-radius: var(--radius-m);
+  background: var(--background-modifier-hover);
+}
+.fm-lens-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+.fm-lens-btn:hover {
+  color: var(--text-normal);
+}
+.fm-lens-btn.is-active {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.fm-template-picker {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 40px;
+}
+.fm-template-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+.fm-template-sub {
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+.fm-template-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 240px);
+  gap: 16px;
+}
+.fm-template-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 18px;
+  text-align: left;
+  border-radius: var(--radius-l);
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.fm-template-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--interactive-accent);
+  box-shadow: var(--shadow-s);
+}
+.fm-template-emoji {
+  font-size: 30px;
+}
+.fm-template-name {
+  font-weight: 600;
+  font-size: var(--font-ui-large);
+}
+.fm-template-desc {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  line-height: 1.45;
+}

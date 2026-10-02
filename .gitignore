@@ -1,0 +1,37 @@
+# dependencies & build output
+node_modules/
+out/
+out-*/
+dist/
+coverage/
+test-results*/
+test-report*/
+*.log
+
+# images are not committed — except the curated README screenshots
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.avif
+!/CS2D3K code/docs/images/
+!/CS2D3K code/docs/images/*.png
+# tiny fixture images the e2e tests embed
+!/CS2D3K code/tests/e2e/fixtures/vaults/**/*.png
+
+# Obsidian per-device state
+**/.obsidian/workspace*.json
+**/.obsidian/cache
+
+# app per-vault state created when a vault is opened in CS2D3K
+.cs2d3k/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# third-party Obsidian plugin/theme bundles (reinstall from community-plugins.json)
+**/.obsidian/plugins/
+**/.obsidian/themes/

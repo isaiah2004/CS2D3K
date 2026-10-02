@@ -1,0 +1,252 @@
+/* Loading screen (LoadingScreen.tsx): graph assembling in the background, name + progress in front. */
+
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  overflow: hidden;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  user-select: none;
+  opacity: 1;
+}
+
+.loading-screen.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 460ms cubic-bezier(0.4, 0, 0.2, 1) 60ms;
+}
+
+.loading-titlebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  z-index: 2;
+  -webkit-app-region: drag;
+}
+
+/* ---------------------------------------------------------------- graph */
+
+.loading-graph {
+  position: absolute;
+  /* the graph fills the space above the progress panel */
+  inset: var(--header-height) 0 calc(max(52px, 12vh) + 70px) 0;
+  pointer-events: none;
+  animation: loading-fade-in 700ms ease-out both;
+  transform-origin: 50% 46%;
+  transition: transform 640ms cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+.loading-graph canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+}
+
+/* the graph "zooms into" the workspace */
+.loading-screen.is-leaving .loading-graph {
+  transform: scale(1.35);
+}
+
+/* keeps the text readable over the graph */
+.loading-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 42% at 50% 100%, var(--background-primary) 30%, transparent 100%),
+    linear-gradient(to bottom, var(--background-primary) 0, transparent 90px);
+}
+
+/* ---------------------------------------------------------------- panel */
+
+.loading-panel {
+  position: absolute;
+  left: 50%;
+  bottom: max(52px, 12vh);
+  width: min(440px, calc(100vw - 64px));
+  transform: translateX(-50%);
+  text-align: center;
+  animation: loading-panel-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) 140ms both;
+}
+
+.loading-vault-name {
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin-bottom: 16px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.loading-bar {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--background-modifier-border);
+}
+
+.loading-bar-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  transform-origin: left center;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--interactive-accent) 55%, transparent), var(--interactive-accent));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--interactive-accent) 55%, transparent);
+  transition: transform 420ms cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+}
+
+/* shimmer sweeping across the filled part */
+.loading-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: loading-shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+body.theme-light .loading-bar-fill::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+}
+
+/* while the amount of work is not known yet: a segment sliding along the track */
+.loading-bar.is-indeterminate .loading-bar-fill {
+  right: auto;
+  width: 32%;
+  transition: none;
+  animation: loading-slide 1.25s cubic-bezier(0.45, 0, 0.35, 1) infinite;
+}
+
+.loading-bar.is-indeterminate .loading-bar-fill::after {
+  display: none;
+}
+
+.loading-stage {
+  margin-top: 13px;
+  font-size: var(--font-ui-medium);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.loading-stage-counts {
+  color: var(--text-normal);
+  font-variant-numeric: tabular-nums;
+}
+
+.loading-details {
+  margin-top: 4px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- error */
+
+.loading-error {
+  padding: 14px 16px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  text-align: left;
+}
+
+.loading-error-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--text-error, var(--color-red));
+}
+
+.loading-error-message {
+  margin-top: 6px;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  word-break: break-word;
+  user-select: text;
+}
+
+.loading-error-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.loading-error-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------------------------------------------------------------- motion */
+
+@keyframes loading-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes loading-panel-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes loading-shimmer {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(240%);
+  }
+}
+
+@keyframes loading-slide {
+  from {
+    transform: translateX(-105%);
+  }
+  to {
+    transform: translateX(320%);
+  }
+}
+
+.loading-screen.is-reduced .loading-panel,
+.loading-screen.is-reduced .loading-graph {
+  animation: none;
+}
+.loading-screen.is-reduced .loading-panel {
+  /* no graph above it: center the panel */
+  bottom: auto;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.loading-screen.is-reduced .loading-bar-fill::after {
+  display: none;
+}
+.loading-screen.is-reduced .loading-bar.is-indeterminate .loading-bar-fill {
+  width: 100%;
+  animation: none;
+  opacity: 0.35;
+}
+.loading-screen.is-reduced.is-leaving {
+  transition-duration: 120ms;
+  transition-delay: 0ms;
+}

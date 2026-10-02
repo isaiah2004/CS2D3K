@@ -1,0 +1,37 @@
+{
+	"nodes":[
+		{
+			"id":"56d5ad2be1750bc5",
+			"type":"text",
+			"text":"# **Constrained State Space Documentation Defined Development Kit**",
+			"styleAttributes":{},
+			"x":180,
+			"y":-1280,
+			"width":620,
+			"height":60
+		},
+		{"id":"8bfc5e3e4e56a6a1","type":"file","file":"how the Ui is layed out/Idea panel.md","x":-780,"y":-980,"width":400,"height":400},
+		{
+			"id":"deedd28873df46c7",
+			"type":"text",
+			"text":"# Workspaces",
+			"styleAttributes":{},
+			"x":-240,
+			"y":-1120,
+			"width":160,
+			"height":60
+		},
+		{"id":"f41f9e66e18bfedf","type":"file","file":"How projects are done/Project.md","x":-780,"y":-300,"width":1240,"height":400},
+		{"id":"6e7a68244a94e319","type":"file","file":"how the Ui is layed out/Dev Agent panel.md","x":60,"y":-980,"width":400,"height":400},
+		{"id":"f6fdcec7e6497818","type":"file","file":"how the Ui is layed out/Review panel.md","x":480,"y":-980,"width":400,"height":400},
+		{"id":"02c859578dd4bf4e","type":"file","file":"Task Queue panel.md","x":-360,"y":-980,"width":400,"height":400},
+		{"id":"4b4f2dc4dadb7a5e","type":"file","file":"How projects are done/Project Definition.md","x":-780,"y":160,"width":400,"height":400},
+		{"id":"811ee8d87a5d918a","type":"file","file":"How projects are done/Project Architecture.md","x":-360,"y":160,"width":400,"height":400},
+		{"id":"91b4d2ab0794f084","type":"file","file":"How projects are done/Project Code.md","x":60,"y":160,"width":400,"height":400}
+	],
+	"edges":[],
+	"metadata":{
+		"version":"1.0-1.0",
+		"frontmatter":{}
+	}
+}

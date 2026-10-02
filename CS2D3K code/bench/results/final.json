@@ -1,0 +1,725 @@
+{
+  "date": "2026-10-02T03:50:31.009Z",
+  "machine": "AVY",
+  "uncapped": true,
+  "graph": [
+    {
+      "scenario": "synthetic 1k",
+      "notes": 1000,
+      "nodes": 1010,
+      "links": 3998,
+      "renderer": "webgl2",
+      "readyMs": 1067,
+      "openMs": 437,
+      "settleMs": 3000,
+      "settled": true,
+      "heapMB": 18.662840843200684,
+      "sim": {
+        "fps": 896.5219986003863,
+        "browserP95": 2.2999999999999545,
+        "engineFps": 864,
+        "frameP95": 0.20000004768371582,
+        "frameAvg": 0.06628086376521322,
+        "tickMs": 2.112472365987144,
+        "ticksPerSec": 218.9054726368159
+      },
+      "drawMs": {
+        "n": 60,
+        "avg": 0.275,
+        "p50": 0.2999999523162842,
+        "p95": 0.3999999761581421,
+        "p99": 0.40000009536743164,
+        "max": 0.40000009536743164
+      },
+      "pan": {
+        "fps": 2983.7016298607264,
+        "engineFps": 2984,
+        "frameAvg": 0.023123324436732335,
+        "frameP95": 0.10000002384185791,
+        "browserP95": 0.5,
+        "long": 1
+      },
+      "zoom": {
+        "fps": 2482.668977449943,
+        "engineFps": 2483.3333333333335,
+        "frameAvg": 0.07249664441051099,
+        "frameP95": 0.20000004768371582,
+        "browserP95": 0.6000000000003638,
+        "long": 1
+      },
+      "hover": {
+        "fps": 2339.0994233909946,
+        "engineFps": 2339.6666666666665,
+        "frameAvg": 0.08123664347122395,
+        "frameP95": 0.20000004768371582,
+        "browserP95": 0.6999999999989086,
+        "long": 1
+      },
+      "settling": {
+        "pan": {
+          "fps": 2572.9902680051623,
+          "engineFps": 2573.6666666666665,
+          "frameAvg": 0.0814402286383544,
+          "frameP95": 0.20000004768371582,
+          "browserP95": 0.6000000000003638,
+          "long": 0,
+          "stillSettling": false
+        },
+        "zoom": {
+          "fps": 2413.919536073015,
+          "engineFps": 2414.3333333333335,
+          "frameAvg": 0.08519950195124477,
+          "frameP95": 0.20000004768371582,
+          "browserP95": 0.6999999999970896,
+          "long": 0,
+          "stillSettling": false
+        },
+        "hover": {
+          "fps": 2615.4051262164026,
+          "engineFps": 2616,
+          "frameAvg": 0.04218909308451031,
+          "frameP95": 0.19999992847442627,
+          "browserP95": 0.6000000000021828,
+          "long": 0,
+          "stillSettling": false
+        }
+      },
+      "updateMs": 274.2000000476837,
+      "errors": [
+        "Error: Minified React error #185; visit https://react.dev/errors/185 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
+        "Error: Minified React error #185; visit https://react.dev/errors/185 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ]
+    },
+    {
+      "scenario": "synthetic 5k",
+      "notes": 5000,
+      "nodes": 5006,
+      "links": 19917,
+      "renderer": "webgl2",
+      "readyMs": 3404,
+      "openMs": 468.2000000476837,
+      "settleMs": 3000,
+      "settled": true,
+      "heapMB": 67.12172412872314,
+      "sim": {
+        "fps": 1240.163362904385,
+        "browserP95": 0.7000000000007276,
+        "engineFps": 1213.6666666666667,
+        "frameP95": 0.10000002384185791,
+        "frameAvg": 0.055534193261054084,
+        "tickMs": 7.954092618324563,
+        "ticksPerSec": 61.94283671547034
+      },
+      "drawMs": {
+        "n": 60,
+        "avg": 0.7316666662693023,
+        "p50": 0.7000000476837158,
+        "p95": 1,
+        "p99": 1.1999999284744263,
+        "max": 1.1999999284744263
+      },
+      "pan": {
+        "fps": 3169.4226864158873,
+        "engineFps": 3641.6666666666665,
+        "frameAvg": 0.06914416489939396,
+        "frameP95": 0.10000002384185791,
+        "browserP95": 0.3999999999996362,
+        "long": 5
+      },
+      "zoom": {
+        "fps": 2024.7882020557659,
+        "engineFps": 2151,
+        "frameAvg": 0.3245002327086518,
+        "frameP95": 0.20000004768371582,
+        "browserP95": 0.5,
+        "long": 6
+      },
+      "hover": {
+        "fps": 2183.1150218484972,
+        "engineFps": 2183.3333333333335,
+        "frameAvg": 0.2868549621924189,
+        "frameP95": 0.20000004768371582,
+        "browserP95": 0.5999999999985448,
+        "long": 9
+      },
+      "settling": {
+        "pan": {
+          "fps": 2253.244697706149,
+          "engineFps": 2373,
+          "frameAvg": 0.3055625795263105,
+          "frameP95": 0.20000004768371582,
+          "browserP95": 0.4000000000014552,
+          "long": 11,
+          "stillSettling": false
+        },
+        "zoom": {
+          "fps": 3010.5663144561863,
+          "engineFps": 3011,
+          "frameAvg": 0.17391785625918924,
+          "frameP95": 0.30000007152557373,
+          "browserP95": 0.6999999999970896,
+          "long": 3,
+          "stillSettling": false
+        },
+        "hover": {
+          "fps": 2638.912036307401,
+          "engineFps": 2639.3333333333335,
+          "frameAvg": 0.08319019929541877,
+          "frameP95": 0.3999999761581421,
+          "browserP95": 0.7999999999992724,
+          "long": 0,
+          "stillSettling": false
+        }
+      },
+      "updateMs": 304.90000009536743,
+      "errors": []
+    },
+    {
+      "scenario": "synthetic 10k",
+      "notes": 10000,
+      "nodes": 10008,
+      "links": 40035,
+      "renderer": "webgl2",
+      "readyMs": 1851,
+      "openMs": 495.1999999284744,
+      "settleMs": 3000,
+      "settled": true,
+      "heapMB": 95.7399492263794,
+      "sim": {
+        "fps": 1647.9051488709783,
+        "browserP95": 0.5,
+        "engineFps": 1643,
+        "frameP95": 0.10000002384185791,
+        "frameAvg": 0.0372895108780384,
+        "tickMs": 31.700000047683716,
+        "ticksPerSec": 45.93980669280185
+      },
+      "drawMs": {
+        "n": 60,
+        "avg": 1.1700000007947287,
+        "p50": 1.1999999284744263,
+        "p95": 1.2999999523162842,
+        "p99": 1.3000000715255737,
+        "max": 1.3000000715255737
+      },
+      "pan": {
+        "fps": 3159.2280257575812,
+        "engineFps": 3159.3333333333335,
+        "frameAvg": 0.11696560508869297,
+        "frameP95": 0.10000002384185791,
+        "browserP95": 0.3999999999996362,
+        "long": 5
+      },
+      "zoom": {
+        "fps": 70.76634776688392,
+        "engineFps": 96,
+        "frameAvg": 0.3090277831587527,
+        "frameP95": 1.5,
+        "browserP95": 1.8999999999996362,
+        "long": 2
+      },
+      "hover": {
+        "fps": 871.3042898500804,
+        "engineFps": 871.3333333333334,
+        "frameAvg": 0.9117827082099856,
+        "frameP95": 0.30000007152557373,
+        "browserP95": 0.8000000000010914,
+        "long": 3
+      },
+      "settling": {
+        "pan": {
+          "fps": 1355.999734378113,
+          "engineFps": 1361.6666666666667,
+          "frameAvg": 0.5854100366555054,
+          "frameP95": 0.2999999523162842,
+          "browserP95": 0.5999999999985448,
+          "long": 9,
+          "stillSettling": false
+        },
+        "zoom": {
+          "fps": 753.4908521285156,
+          "engineFps": 754,
+          "frameAvg": 1.0708222850880509,
+          "frameP95": 1.6999999284744263,
+          "browserP95": 2,
+          "long": 4,
+          "stillSettling": true
+        },
+        "hover": {
+          "fps": 1732.1600771829474,
+          "engineFps": 1916.3333333333333,
+          "frameAvg": 0.26039311155523914,
+          "frameP95": 0.6000000238418579,
+          "browserP95": 1.0999999999985448,
+          "long": 2,
+          "stillSettling": true
+        }
+      },
+      "updateMs": 361.1999999284744,
+      "errors": []
+    },
+    {
+      "scenario": "Bible (chapters)",
+      "notes": 1255,
+      "nodes": 1261,
+      "links": 5943,
+      "renderer": "webgl2",
+      "readyMs": 1374,
+      "openMs": 454.3000000715256,
+      "settleMs": 3000.100000023842,
+      "settled": true,
+      "heapMB": 30.218743324279785,
+      "sim": {
+        "fps": 741.3055730472188,
+        "browserP95": 17.399999999999636,
+        "engineFps": 706.6666666666666,
+        "frameP95": 0.20000004768371582,
+        "frameAvg": 0.0831603765487671,
+        "tickMs": 2.4039769370393405,
+        "ticksPerSec": 211.2816423957051
+      },
+      "drawMs": {
+        "n": 60,
+        "avg": 0.998333332935969,
+        "p50": 1,
+        "p95": 1.3000000715255737,
+        "p99": 1.5,
+        "max": 1.5
+      },
+      "pan": {
+        "fps": 3145.9999999249935,
+        "engineFps": 3146,
+        "frameAvg": 0.021529985424016688,
+        "frameP95": 0.10000002384185791,
+        "browserP95": 0.5,
+        "long": 1
+      },
+      "zoom": {
+        "fps": 2347.765223496309,
+        "engineFps": 2348.3333333333335,
+        "frameAvg": 0.08212917025331236,
+        "frameP95": 0.20000004768371582,
+        "browserP95": 0.6000000000003638,
+        "long": 1
+      },
+      "hover": {
+        "fps": 2490.250324989167,
+        "engineFps": 2490.6666666666665,
+        "frameAvg": 0.039975909815355336,
+        "frameP95": 0.10000002384185791,
+        "browserP95": 0.6000000000003638,
+        "long": 1
+      },
+      "settling": {
+        "pan": {
+          "fps": 2761.3905276358473,
+          "engineFps": 2762,
+          "frameAvg": 0.026635288372150286,
+          "frameP95": 0.10000002384185791,
+          "browserP95": 0.5,
+          "long": 0,
+          "stillSettling": false
+        },
+        "zoom": {
+          "fps": 2224.9999999823162,
+          "engineFps": 2225.3333333333335,
+          "frameAvg": 0.10191731650433618,
+          "frameP95": 0.20000004768371582,
+          "browserP95": 0.7000000000007276,
+          "long": 0,
+          "stillSettling": false
+        },
+        "hover": {
+          "fps": 2354.7645235476457,
+          "engineFps": 2355.3333333333335,
+          "frameAvg": 0.054811773710469504,
+          "frameP95": 0.20000004768371582,
+          "browserP95": 0.7000000000007276,
+          "long": 0,
+          "stillSettling": false
+        }
+      },
+      "updateMs": 289.39999997615814,
+      "errors": []
+    },
+    {
+      "scenario": "Bible (verses + 78k xrefs)",
+      "notes": 32357,
+      "nodes": 32362,
+      "links": 141066,
+      "renderer": "webgl2",
+      "readyMs": 50143,
+      "openMs": 655.5,
+      "settleMs": 5973.099999904633,
+      "settled": true,
+      "heapMB": 218.19318771362305,
+      "sim": {
+        "fps": 3375.9166473106184,
+        "browserP95": 0.5,
+        "engineFps": 3391.6666666666665,
+        "frameP95": 0.10000002384185791,
+        "frameAvg": 0.03771007359760106,
+        "tickMs": 77.29999995231628,
+        "ticksPerSec": 13.358411458770904
+      },
+      "drawMs": {
+        "n": 60,
+        "avg": 6.389999999602636,
+        "p50": 6.700000047683716,
+        "p95": 9.199999928474426,
+        "p99": 9.700000047683716,
+        "max": 9.700000047683716
+      },
+      "pan": {
+        "fps": 2971.801879874678,
+        "engineFps": 2972,
+        "frameAvg": 0.02581875284940686,
+        "frameP95": 0.10000002384185791,
+        "browserP95": 0.5999999999985448,
+        "long": 2
+      },
+      "zoom": {
+        "fps": 2271.1819211872057,
+        "engineFps": 2271.6666666666665,
+        "frameAvg": 0.10626559126315883,
+        "frameP95": 0.30000007152557373,
+        "browserP95": 0.7999999999956344,
+        "long": 1
+      },
+      "hover": {
+        "fps": 1495.3177591657604,
+        "engineFps": 1496,
+        "frameAvg": 0.28589572365696203,
+        "frameP95": 0.7999999523162842,
+        "browserP95": 1.2000000000116415,
+        "long": 1
+      },
+      "settling": {
+        "pan": {
+          "fps": 2310.102323101021,
+          "engineFps": 2310.6666666666665,
+          "frameAvg": 0.03283323742238621,
+          "frameP95": 0.10000002384185791,
+          "browserP95": 0.6000000000058208,
+          "long": 0,
+          "stillSettling": true
+        },
+        "zoom": {
+          "fps": 739.0377182401626,
+          "engineFps": 739.6666666666666,
+          "frameAvg": 0.8572329894117859,
+          "frameP95": 1.899999976158142,
+          "browserP95": 2.3999999999941792,
+          "long": 0,
+          "stillSettling": true
+        },
+        "hover": {
+          "fps": 1304.6955710437908,
+          "engineFps": 1305.3333333333333,
+          "frameAvg": 0.3206332990779818,
+          "frameP95": 0.8999999761581421,
+          "browserP95": 1.4000000000087311,
+          "long": 0,
+          "stillSettling": true
+        }
+      },
+      "updateMs": 589.1999999284744,
+      "errors": []
+    },
+    {
+      "scenario": "Bible (verses + 340k xrefs)",
+      "notes": 32357,
+      "nodes": 32361,
+      "links": 399755,
+      "renderer": "webgl2",
+      "readyMs": 40295,
+      "openMs": 835.7000000476837,
+      "settleMs": 7141.799999952316,
+      "settled": true,
+      "heapMB": 277.6651372909546,
+      "sim": {
+        "fps": 2980.900636645447,
+        "browserP95": 0.5999999999985448,
+        "engineFps": 2981.3333333333335,
+        "frameP95": 0.10000002384185791,
+        "frameAvg": 0.03635957038733102,
+        "tickMs": 68.89999997615814,
+        "ticksPerSec": 11.38000465842454
+      },
+      "drawMs": {
+        "n": 60,
+        "avg": 13.826666665077209,
+        "p50": 13.5,
+        "p95": 19.699999928474426,
+        "p99": 20.5,
+        "max": 20.5
+      },
+      "pan": {
+        "fps": 4140.25264136963,
+        "engineFps": 4140.666666666667,
+        "frameAvg": 0.021727580309029344,
+        "frameP95": 0.10000002384185791,
+        "browserP95": 0.5,
+        "long": 2
+      },
+      "zoom": {
+        "fps": 2682.2439251598603,
+        "engineFps": 2682.6666666666665,
+        "frameAvg": 0.11324552744330753,
+        "frameP95": 0.30000007152557373,
+        "browserP95": 0.8000000000029104,
+        "long": 1
+      },
+      "hover": {
+        "fps": 1147.513664844687,
+        "engineFps": 1148,
+        "frameAvg": 0.44369918686033816,
+        "frameP95": 0.8999999761581421,
+        "browserP95": 1.5999999999985448,
+        "long": 1
+      },
+      "settling": {
+        "pan": {
+          "fps": 1158.9227384841022,
+          "engineFps": 1159.3333333333333,
+          "frameAvg": 0.4039102936695882,
+          "frameP95": 0.7999999523162842,
+          "browserP95": 1.4000000000014552,
+          "long": 0,
+          "stillSettling": true
+        },
+        "zoom": {
+          "fps": 471.25479087193344,
+          "engineFps": 471.6666666666667,
+          "frameAvg": 1.5803533596200572,
+          "frameP95": 2.100000023841858,
+          "browserP95": 2.7000000000043656,
+          "long": 0,
+          "stillSettling": true
+        },
+        "hover": {
+          "fps": 966.2367096700472,
+          "engineFps": 966.6666666666666,
+          "frameAvg": 0.5499310362750086,
+          "frameP95": 1.399999976158142,
+          "browserP95": 1.9000000000087311,
+          "long": 0,
+          "stillSettling": true
+        }
+      },
+      "updateMs": 803.3000000715256,
+      "errors": []
+    }
+  ],
+  "canvas": [
+    {
+      "scenario": "canvas 200 nodes",
+      "nodes": 200,
+      "totalNodes": 200,
+      "edges": 240,
+      "readyMs": 464,
+      "openMs": 443.2000000476837,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 1760.9413019845897,
+        "frameAvg": 0.5651902328222529,
+        "frameP95": 0.8999999999999773,
+        "long": 0
+      },
+      "zoom": {
+        "fps": 102.37890133111095,
+        "frameAvg": 9.721359223300972,
+        "frameP95": 18.699999999999818,
+        "long": 152
+      },
+      "zoomRange": {
+        "fps": 872.4630919382805,
+        "frameAvg": 1.146142093200917,
+        "frameP95": 1.7999999999992724,
+        "long": 0
+      },
+      "dragMsPerMove": 10.75,
+      "heapMB": 18.918888092041016,
+      "errors": []
+    },
+    {
+      "scenario": "canvas 1000 nodes",
+      "nodes": 1000,
+      "totalNodes": 1000,
+      "edges": 1200,
+      "readyMs": 478,
+      "openMs": 446.40000009536743,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 1931.87120855539,
+        "frameAvg": 0.5148550724637686,
+        "frameP95": 0.7999999999997272,
+        "long": 0
+      },
+      "zoom": {
+        "fps": 103.45974717150145,
+        "frameAvg": 9.620257234726687,
+        "frameP95": 18.699999999999818,
+        "long": 150
+      },
+      "zoomRange": {
+        "fps": 892.8273978079086,
+        "frameAvg": 1.1199253731343286,
+        "frameP95": 1.800000000000182,
+        "long": 0
+      },
+      "dragMsPerMove": 10.3,
+      "heapMB": 17.706485748291016,
+      "errors": []
+    },
+    {
+      "scenario": "canvas 3000 nodes",
+      "nodes": 3000,
+      "totalNodes": 3000,
+      "edges": 3600,
+      "readyMs": 501,
+      "openMs": 523.6000000238419,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 1809.7586988976775,
+        "frameAvg": 0.5500736648250384,
+        "frameP95": 0.900000000000091,
+        "long": 0
+      },
+      "zoom": {
+        "fps": 103.37629634783276,
+        "frameAvg": 9.627564102564103,
+        "frameP95": 18.800000000000182,
+        "long": 151
+      },
+      "zoomRange": {
+        "fps": 853.2195707239036,
+        "frameAvg": 1.171953125,
+        "frameP95": 1.7999999999992724,
+        "long": 0
+      },
+      "dragMsPerMove": 12.266666666666667,
+      "heapMB": 33.620285987854004,
+      "errors": []
+    }
+  ],
+  "formmap": [
+    {
+      "scenario": "form-map 300 cards",
+      "cards": 300,
+      "totalNodes": 306,
+      "readyMs": 524,
+      "openMs": 772.1000000238419,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 1215.545112155451,
+        "frameAvg": 0.8206745270085007,
+        "frameP95": 1.2999999999999545,
+        "long": 1
+      },
+      "zoom": {
+        "fps": 863.2350491352388,
+        "frameAvg": 1.1583172520262446,
+        "frameP95": 1.6000000000003638,
+        "long": 0
+      },
+      "zoomRange": {
+        "fps": 725.8736133839589,
+        "frameAvg": 1.3776502983019732,
+        "frameP95": 1.7999999999992724,
+        "long": 0
+      },
+      "dragMsPerMove": 11.483333333333333,
+      "lensMs": {
+        "Board": 11.899999976158142,
+        "Table": 25,
+        "Doc": 6.800000071525574,
+        "Map": 17.300000071525574,
+        "Board (warm)": 57.299999952316284,
+        "Map (warm)": 8
+      },
+      "heapMB": 21.03633975982666,
+      "errors": []
+    },
+    {
+      "scenario": "form-map 1000 cards",
+      "cards": 1000,
+      "totalNodes": 1006,
+      "readyMs": 491,
+      "openMs": 712.3999999761581,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 1165.550111655501,
+        "frameAvg": 0.8580211609951403,
+        "frameP95": 1.5,
+        "long": 1
+      },
+      "zoom": {
+        "fps": 841.4142423939486,
+        "frameAvg": 1.1884752475247524,
+        "frameP95": 1.699999999999818,
+        "long": 0
+      },
+      "zoomRange": {
+        "fps": 735.4460328684956,
+        "frameAvg": 1.3597643860444042,
+        "frameP95": 1.7000000000007276,
+        "long": 0
+      },
+      "dragMsPerMove": 11.7,
+      "lensMs": {
+        "Board": 10.699999928474426,
+        "Table": 27.699999928474426,
+        "Doc": 4,
+        "Map": 6.5,
+        "Board (warm)": 124.20000004768372,
+        "Map (warm)": 18.09999990463257
+      },
+      "heapMB": 35.316627502441406,
+      "errors": []
+    },
+    {
+      "scenario": "form-map 3000 cards",
+      "cards": 3000,
+      "totalNodes": 3006,
+      "readyMs": 507,
+      "openMs": 756.7000000476837,
+      "domNodes": 0,
+      "render": "canvas",
+      "pan": {
+        "fps": 1122.4047722198154,
+        "frameAvg": 0.8909441805225663,
+        "frameP95": 1.400000000000091,
+        "long": 4
+      },
+      "zoom": {
+        "fps": 851.2765815815239,
+        "frameAvg": 1.174706342991386,
+        "frameP95": 1.699999999999818,
+        "long": 0
+      },
+      "zoomRange": {
+        "fps": 730.3501816053839,
+        "frameAvg": 1.3692974452554745,
+        "frameP95": 1.7999999999992724,
+        "long": 0
+      },
+      "dragMsPerMove": 13.233333333333333,
+      "lensMs": {
+        "Board": 11.5,
+        "Table": 88.29999995231628,
+        "Doc": 3.700000047683716,
+        "Map": 9,
+        "Board (warm)": 416.7999999523163,
+        "Map (warm)": 39.700000047683716
+      },
+      "heapMB": 54.721985816955566,
+      "errors": []
+    }
+  ]
+}

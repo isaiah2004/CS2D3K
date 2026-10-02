@@ -1,0 +1,580 @@
+/* Rendered markdown (reading view, canvas cards, embeds, previews) */
+.markdown-rendered {
+  font-family: var(--font-text);
+  font-size: var(--font-text-size);
+  line-height: 1.6;
+  color: var(--text-normal);
+  user-select: text;
+  overflow-wrap: break-word;
+}
+.markdown-rendered > :first-child {
+  margin-top: 0;
+}
+.markdown-rendered h1,
+.markdown-rendered h2,
+.markdown-rendered h3,
+.markdown-rendered h4,
+.markdown-rendered h5,
+.markdown-rendered h6 {
+  line-height: 1.25;
+  margin: 1.2em 0 0.5em;
+  color: var(--text-normal);
+}
+.markdown-rendered h1 {
+  font-size: var(--h1-size);
+  font-weight: var(--h1-weight);
+}
+.markdown-rendered h2 {
+  font-size: var(--h2-size);
+  font-weight: var(--h2-weight);
+}
+.markdown-rendered h3 {
+  font-size: var(--h3-size);
+  font-weight: var(--h3-weight);
+}
+.markdown-rendered h4 {
+  font-size: var(--h4-size);
+  font-weight: var(--h4-weight);
+}
+.markdown-rendered h5 {
+  font-size: var(--h5-size);
+  font-weight: var(--h5-weight);
+}
+.markdown-rendered h6 {
+  font-size: var(--h6-size);
+  font-weight: var(--h6-weight);
+  color: var(--text-muted);
+}
+.markdown-rendered p {
+  margin: 0.6em 0;
+}
+.markdown-rendered a {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-decoration-color: hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.4);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.markdown-rendered a:hover {
+  color: var(--text-accent-hover);
+}
+.markdown-rendered a.internal-link {
+  text-decoration: none;
+}
+.markdown-rendered a.internal-link:hover {
+  text-decoration: underline;
+}
+.markdown-rendered a.is-unresolved {
+  opacity: var(--link-unresolved-opacity);
+  text-decoration: underline dashed;
+}
+.markdown-rendered a.external-link::after {
+  content: '↗';
+  font-size: 0.75em;
+  margin-left: 2px;
+  opacity: 0.7;
+}
+.markdown-rendered a.tag {
+  background: var(--tag-background);
+  color: var(--tag-color);
+  border-radius: 1em;
+  padding: 0.05em 0.6em;
+  font-size: 0.875em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.markdown-rendered a.tag:hover {
+  background: var(--tag-background-hover);
+}
+.markdown-rendered mark {
+  background: var(--text-highlight-bg);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.markdown-rendered code {
+  font-family: var(--font-monospace);
+  font-size: 0.87em;
+  background: var(--code-background);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  padding: 0.1em 0.3em;
+  color: var(--code-normal);
+}
+.markdown-rendered hr {
+  border: none;
+  border-top: 1px solid var(--background-modifier-border-hover);
+  margin: 2em 0;
+}
+.markdown-rendered blockquote {
+  margin: 1em 0;
+  padding: 0.1em 1em;
+  border-left: 3px solid var(--interactive-accent);
+  color: var(--text-muted);
+}
+.markdown-rendered ul,
+.markdown-rendered ol {
+  padding-left: 1.6em;
+  margin: 0.5em 0;
+}
+.markdown-rendered li {
+  margin: 0.15em 0;
+}
+.markdown-rendered li > p {
+  margin: 0;
+}
+.markdown-rendered li::marker {
+  color: var(--text-faint);
+}
+.markdown-rendered li.task-list-item {
+  list-style: none;
+  margin-left: -1.3em;
+}
+.markdown-rendered li.task-list-item.is-checked {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+.markdown-rendered .task-list-item-checkbox {
+  width: 15px;
+  height: 15px;
+  margin: 0 0.5em 0 0;
+  vertical-align: -2px;
+  accent-color: var(--interactive-accent);
+  cursor: pointer;
+}
+.markdown-rendered table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.markdown-rendered th,
+.markdown-rendered td {
+  border: 1px solid var(--background-modifier-border);
+  padding: 6px 12px;
+}
+.markdown-rendered th {
+  background: var(--background-secondary);
+  font-weight: 600;
+}
+.markdown-rendered img {
+  max-width: 100%;
+  border-radius: var(--radius-s);
+}
+
+/* code blocks */
+.markdown-rendered .code-block {
+  position: relative;
+  margin: 1em 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--code-background);
+  overflow: hidden;
+}
+.markdown-rendered .code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px 3px 12px;
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--background-modifier-border);
+  min-height: 28px;
+}
+.markdown-rendered .code-block-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0.6;
+  transition: opacity 0.1s;
+}
+.markdown-rendered .code-block:hover .code-block-actions {
+  opacity: 1;
+}
+.markdown-rendered .code-block-actions button {
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-muted);
+  border-radius: var(--radius-s);
+  padding: 1px 8px;
+  cursor: pointer;
+  font-size: var(--font-ui-smaller);
+}
+.markdown-rendered .code-block-actions button:hover {
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border-hover);
+}
+.markdown-rendered .code-block-run {
+  color: var(--color-green) !important;
+}
+.markdown-rendered .code-block-run.is-running {
+  color: var(--color-red) !important;
+}
+.markdown-rendered pre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+.markdown-rendered pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--font-code-size);
+  line-height: 1.5;
+}
+.markdown-rendered .code-block-output {
+  border-top: 1px dashed var(--background-modifier-border-hover);
+  background: var(--background-primary-alt);
+}
+.code-output-status {
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  padding: 4px 12px 0;
+}
+.code-output-status.is-error {
+  color: var(--text-error);
+}
+.code-output-text {
+  font-family: var(--font-monospace);
+  font-size: calc(var(--font-code-size) - 1px);
+  white-space: pre-wrap;
+  padding: 6px 12px 10px !important;
+  color: var(--text-normal);
+  margin: 0;
+  max-height: 400px;
+  overflow: auto;
+}
+.code-output-text .stderr {
+  color: var(--text-error);
+}
+
+/* highlight.js tokens → theme variables */
+.hljs-comment,
+.hljs-quote {
+  color: var(--code-comment);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag {
+  color: var(--code-keyword);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-meta .hljs-string {
+  color: var(--code-string);
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  color: var(--code-number);
+}
+.hljs-title,
+.hljs-title.function_,
+.hljs-section {
+  color: var(--code-function);
+}
+.hljs-type,
+.hljs-built_in,
+.hljs-title.class_,
+.hljs-class .hljs-title {
+  color: var(--code-type);
+}
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-property,
+.hljs-params {
+  color: var(--code-property);
+}
+.hljs-operator,
+.hljs-punctuation {
+  color: var(--code-operator);
+}
+.hljs-name,
+.hljs-tag,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-deletion {
+  color: var(--code-tag);
+}
+.hljs-meta {
+  color: var(--text-faint);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: bold;
+}
+
+/* callouts */
+.markdown-rendered .callout {
+  --callout-color: var(--color-blue-rgb);
+  border: none;
+  border-left: none;
+  background: rgba(var(--callout-color), 0.1);
+  border-radius: var(--radius-m);
+  padding: 10px 14px;
+  margin: 1em 0;
+  color: var(--text-normal);
+}
+.markdown-rendered .callout-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: rgb(var(--callout-color));
+}
+.markdown-rendered .callout[data-callout-fold] .callout-title {
+  cursor: pointer;
+}
+.markdown-rendered .callout-fold::after {
+  content: '▾';
+  margin-left: 4px;
+}
+.markdown-rendered .callout.is-collapsed .callout-fold::after {
+  content: '▸';
+}
+.markdown-rendered .callout.is-collapsed .callout-content {
+  display: none;
+}
+.markdown-rendered .callout-content > :last-child {
+  margin-bottom: 0;
+}
+.markdown-rendered .callout-content > :first-child {
+  margin-top: 0.4em;
+}
+.markdown-rendered .callout-icon::before {
+  content: 'ℹ';
+}
+.markdown-rendered .callout[data-callout='tip'],
+.markdown-rendered .callout[data-callout='hint'],
+.markdown-rendered .callout[data-callout='important'] {
+  --callout-color: var(--color-cyan-rgb);
+}
+.markdown-rendered .callout[data-callout='tip'] .callout-icon::before {
+  content: '🔥';
+}
+.markdown-rendered .callout[data-callout='success'],
+.markdown-rendered .callout[data-callout='check'],
+.markdown-rendered .callout[data-callout='done'] {
+  --callout-color: var(--color-green-rgb);
+}
+.markdown-rendered .callout[data-callout='success'] .callout-icon::before {
+  content: '✔';
+}
+.markdown-rendered .callout[data-callout='question'],
+.markdown-rendered .callout[data-callout='help'],
+.markdown-rendered .callout[data-callout='faq'] {
+  --callout-color: var(--color-orange-rgb);
+}
+.markdown-rendered .callout[data-callout='question'] .callout-icon::before {
+  content: '?';
+}
+.markdown-rendered .callout[data-callout='warning'],
+.markdown-rendered .callout[data-callout='caution'],
+.markdown-rendered .callout[data-callout='attention'] {
+  --callout-color: var(--color-orange-rgb);
+}
+.markdown-rendered .callout[data-callout='warning'] .callout-icon::before {
+  content: '⚠';
+}
+.markdown-rendered .callout[data-callout='failure'],
+.markdown-rendered .callout[data-callout='fail'],
+.markdown-rendered .callout[data-callout='missing'],
+.markdown-rendered .callout[data-callout='danger'],
+.markdown-rendered .callout[data-callout='error'],
+.markdown-rendered .callout[data-callout='bug'] {
+  --callout-color: var(--color-red-rgb);
+}
+.markdown-rendered .callout[data-callout='danger'] .callout-icon::before,
+.markdown-rendered .callout[data-callout='error'] .callout-icon::before {
+  content: '⛔';
+}
+.markdown-rendered .callout[data-callout='example'] {
+  --callout-color: var(--color-purple-rgb);
+}
+.markdown-rendered .callout[data-callout='quote'],
+.markdown-rendered .callout[data-callout='cite'] {
+  --callout-color: 158, 158, 158;
+}
+.markdown-rendered .callout[data-callout='abstract'],
+.markdown-rendered .callout[data-callout='summary'],
+.markdown-rendered .callout[data-callout='tldr'] {
+  --callout-color: var(--color-cyan-rgb);
+}
+.markdown-rendered .callout[data-callout='todo'] .callout-icon::before {
+  content: '☑';
+}
+
+/* embeds */
+.markdown-rendered .markdown-embed {
+  display: block;
+  border-left: 2px solid var(--interactive-accent);
+  padding: 4px 0 4px 16px;
+  margin: 1em 0;
+}
+.markdown-rendered .markdown-embed-title {
+  font-size: var(--font-ui-small);
+  font-family: var(--font-interface);
+  margin-bottom: 4px;
+}
+.markdown-rendered .markdown-embed-content {
+  font-size: 0.95em;
+}
+.markdown-rendered .image-embed {
+  display: inline-block;
+}
+
+/* frontmatter */
+.markdown-rendered .frontmatter-properties {
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+.markdown-rendered .fm-title {
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.markdown-rendered .fm-row {
+  display: flex;
+  gap: 12px;
+  padding: 3px 0;
+}
+.markdown-rendered .fm-key {
+  width: 120px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.markdown-rendered .fm-value {
+  color: var(--text-normal);
+}
+.markdown-rendered .fm-pill {
+  background: var(--tag-background);
+  color: var(--tag-color);
+  border-radius: 1em;
+  padding: 1px 8px;
+  margin-right: 4px;
+  font-size: var(--font-ui-smaller);
+}
+
+/* page preview popover (Mod+hover over internal links) */
+.hover-popover {
+  position: fixed;
+  z-index: 1000;
+  overflow: auto;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-l);
+  animation: hover-popover-in 0.12s ease-out;
+}
+@keyframes hover-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+.hover-popover-body {
+  padding: 14px 22px;
+}
+.hover-popover .markdown-rendered {
+  font-size: calc(var(--font-text-size) * 0.9);
+}
+.hover-popover-empty {
+  color: var(--text-faint);
+  font-size: var(--font-ui-small);
+  font-family: var(--font-interface);
+}
+.hover-popover-image {
+  max-width: 100%;
+  display: block;
+  margin: 0 auto;
+}
+.hover-popover-file {
+  font-family: var(--font-interface);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.hover-popover-code {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-small);
+  white-space: pre-wrap;
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* callout icons (kept in sync with the editor's live preview) */
+.markdown-rendered .callout[data-callout='note'] .callout-icon::before {
+  content: '✎';
+}
+.markdown-rendered .callout[data-callout='abstract'] .callout-icon::before,
+.markdown-rendered .callout[data-callout='summary'] .callout-icon::before,
+.markdown-rendered .callout[data-callout='tldr'] .callout-icon::before {
+  content: '≡';
+}
+.markdown-rendered .callout[data-callout='hint'] .callout-icon::before,
+.markdown-rendered .callout[data-callout='important'] .callout-icon::before {
+  content: '🔥';
+}
+.markdown-rendered .callout[data-callout='check'] .callout-icon::before,
+.markdown-rendered .callout[data-callout='done'] .callout-icon::before {
+  content: '✔';
+}
+.markdown-rendered .callout[data-callout='help'] .callout-icon::before,
+.markdown-rendered .callout[data-callout='faq'] .callout-icon::before {
+  content: '?';
+}
+.markdown-rendered .callout[data-callout='caution'] .callout-icon::before,
+.markdown-rendered .callout[data-callout='attention'] .callout-icon::before {
+  content: '⚠';
+}
+.markdown-rendered .callout[data-callout='failure'] .callout-icon::before,
+.markdown-rendered .callout[data-callout='fail'] .callout-icon::before,
+.markdown-rendered .callout[data-callout='missing'] .callout-icon::before {
+  content: '✖';
+}
+.markdown-rendered .callout[data-callout='bug'] .callout-icon::before {
+  content: '🐞';
+}
+.markdown-rendered .callout[data-callout='example'] .callout-icon::before {
+  content: '☰';
+}
+.markdown-rendered .callout[data-callout='quote'] .callout-icon::before,
+.markdown-rendered .callout[data-callout='cite'] .callout-icon::before {
+  content: '❝';
+}
+.markdown-rendered .callout-icon {
+  display: inline-block;
+  width: 1.2em;
+  text-align: center;
+}
+
+/* task items: checkbox in the marker column, wrapped text aligned with the first line */
+.markdown-rendered li.task-list-item {
+  margin-left: -1.6em;
+  padding-left: 1.6em;
+  text-indent: -1.6em;
+}
+.markdown-rendered li.task-list-item ul,
+.markdown-rendered li.task-list-item ol,
+.markdown-rendered li.task-list-item pre,
+.markdown-rendered li.task-list-item .code-block {
+  text-indent: 0;
+}
+.markdown-rendered li.task-list-item > .task-list-item-checkbox,
+.markdown-rendered li.task-list-item > p > .task-list-item-checkbox:first-child {
+  margin: 0 calc(1.6em - 15px - 0.1em) 0 0.1em;
+}
+.markdown-rendered ul ul {
+  list-style-type: disc;
+}

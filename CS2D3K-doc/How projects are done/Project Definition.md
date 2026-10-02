@@ -1,0 +1,1 @@
+This is the high-level + medium level logic for the application. Here we define everything that the app is. We do it in the the most objective way possible and this is were all our refined ideas from the [[Idea panel]] are merged. 

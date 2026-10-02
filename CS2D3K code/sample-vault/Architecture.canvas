@@ -1,0 +1,15 @@
+{
+	"nodes":[
+		{"id":"a1","type":"text","text":"# CS2D3K\nKnowledge base + code","x":-220,"y":-320,"width":300,"height":110,"color":"6"},
+		{"id":"a2","type":"file","file":"Welcome.md","x":-560,"y":-140,"width":320,"height":260},
+		{"id":"a3","type":"file","file":"Projects/api/server.ts","x":-160,"y":-140,"width":380,"height":300},
+		{"id":"a4","type":"code","language":"python","code":"for i in range(3):\n    print('canvas code node', i)","x":280,"y":-140,"width":360,"height":220},
+		{"id":"a5","type":"link","url":"https://en.wikipedia.org/wiki/Zettelkasten","x":280,"y":120,"width":360,"height":120},
+		{"id":"g1","type":"group","label":"Code","x":-180,"y":-180,"width":840,"height":440}
+	],
+	"edges":[
+		{"id":"e1","fromNode":"a1","fromSide":"bottom","toNode":"a2","toSide":"top","toEnd":"arrow"},
+		{"id":"e2","fromNode":"a1","fromSide":"bottom","toNode":"a3","toSide":"top","toEnd":"arrow","label":"implements"},
+		{"id":"e3","fromNode":"a3","fromSide":"right","toNode":"a4","toSide":"left","toEnd":"arrow","color":"4"}
+	]
+}

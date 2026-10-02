@@ -1,0 +1,13 @@
+# patterns are anchored to this folder so they can't hide source files (e.g. "out*" used to match output.ts)
+/node_modules/
+/out/
+/out-*/
+/dist/
+/coverage/
+/test-results*/
+/test-report*/
+/e2e/screenshots/
+/playground-vault/
+/bench/.cache/
+/vaults/
+*.log
